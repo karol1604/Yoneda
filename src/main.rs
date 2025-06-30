@@ -63,14 +63,14 @@ fn subst(root: Expr, var: &str, value: &Expr) -> Expr {
 
 // FIXME: This is a very naive evaluation function. We should check for clashing variable names
 // as they can lead to incorrect substitutions.
-// For example, `λx . (λy.x)` applied to `y` should not substitute `y` with `z` in the body of the
-// first lambda.
+// For example, `λx . (λy.x)` applied to `y` should not substitute `y` with `x` in the body of the
+// first lambda as it would return the identity function `λy.y` but we want something like `λy_1 . y`.
 fn eval(expr: Expr) -> Expr {
     match expr {
         Expr::App(func, arg) => {
             if let Expr::Lam(param, body) = *func {
                 // Substitute the argument into the body of the lambda
-                subst(*body, &param, &*arg)
+                subst(*body, &param, &arg)
             } else {
                 Expr::App(func, arg)
             }
