@@ -1,7 +1,7 @@
 use std::fmt::Display;
 
 #[derive(Clone)]
-enum Expr {
+enum Expr { //Expr can be a Variabel, lambda function or Application
     Var(String),
     Lam(String, Box<Expr>),
     App(Box<Expr>, Box<Expr>),
