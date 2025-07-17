@@ -1,11 +1,30 @@
-use std::fmt::Display;
+use std::{collections::HashSet, fmt::Display};
 
 #[derive(Clone)]
 enum Expr {
     Var(usize),
     Free(String), // unbound variable, not sure about this
-    Lam(Box<Expr>),
+    Lam(String, Box<Expr>),
     App(Box<Expr>, Box<Expr>),
+}
+
+fn collect_free_vars(expr: &Expr) -> HashSet<String> {
+    let mut free_vars = HashSet::new();
+    match expr {
+        Expr::Var(_) => {}
+        Expr::Free(name) => {
+            free_vars.insert(name.clone());
+        }
+        Expr::Lam(_, body) => {
+            free_vars.extend(collect_free_vars(body));
+        }
+        Expr::App(l, r) => {
+            free_vars.extend(collect_free_vars(l));
+            free_vars.extend(collect_free_vars(r));
+        }
+    }
+
+    free_vars
 }
 
 /// Converts a named expression to a de Bruijn index expression.
@@ -23,7 +42,7 @@ fn to_debruijn(expr: &NamedExpr, ctx: &mut Vec<String>) -> Expr {
         }
         NamedExpr::Lam(param, body) => {
             ctx.push(param.clone());
-            let res = Expr::Lam(Box::new(to_debruijn(body, ctx)));
+            let res = Expr::Lam(param.clone(), Box::new(to_debruijn(body, ctx)));
             ctx.pop();
             res
         }
@@ -44,10 +63,27 @@ fn from_debruijn(expr: &Expr, ctx: &mut Vec<String>) -> NamedExpr {
             let idx = ctx.len() - 1 - i;
             NamedExpr::Var(ctx[idx].clone())
         }
-        Expr::Lam(expr) => {
-            let name = fresh_var_name(ctx);
+        Expr::Lam(orig, body) => {
+            let free_vars = collect_free_vars(body);
+
+            let name = if ctx.contains(orig) || free_vars.contains(orig) {
+                // If the original name is already in the context or is a free variable,
+                // generate a new name.
+                fresh_var_name(ctx)
+            } else {
+                orig.clone()
+            };
+            //let name = fresh_var_name(ctx);
             ctx.push(name.clone());
-            let res = NamedExpr::Lam(name, Box::new(from_debruijn(expr, ctx)));
+            println!(
+                "current context: {}",
+                ctx.iter()
+                    .map(|s| s.as_str())
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            );
+
+            let res = NamedExpr::Lam(name, Box::new(from_debruijn(body, ctx)));
             ctx.pop();
             res
         }
@@ -69,7 +105,7 @@ fn shift(expr: &Expr, d: isize, cuttof: usize) -> Expr {
             }
         }
         Expr::Free(name) => Expr::Free(name.clone()),
-        Expr::Lam(body) => Expr::Lam(Box::new(shift(body, d, cuttof + 1))),
+        Expr::Lam(name, body) => Expr::Lam(name.clone(), Box::new(shift(body, d, cuttof + 1))),
         Expr::App(lam, arg) => Expr::App(
             Box::new(shift(lam, d, cuttof)),
             Box::new(shift(arg, d, cuttof)),
@@ -139,7 +175,7 @@ fn subst(root: &Expr, var: usize, value: &Expr) -> Expr {
             }
         }
         Expr::Free(name) => Expr::Free(name.clone()),
-        Expr::Lam(body) => Expr::Lam(Box::new(subst(body, var + 1, value))),
+        Expr::Lam(name, body) => Expr::Lam(name.clone(), Box::new(subst(body, var + 1, value))),
         Expr::App(lam, arg) => Expr::App(
             Box::new(subst(lam, var, value)),
             Box::new(subst(arg, var, value)),
@@ -154,7 +190,7 @@ fn eval(expr: Expr) -> Expr {
             let arg_evaled = eval(*arg);
 
             match func_evaled {
-                Expr::Lam(body) => {
+                Expr::Lam(_name, body) => {
                     let arg_shifted = shift(&arg_evaled, 1, 0);
                     let res = subst(&body, 0, &arg_shifted);
                     eval(shift(&res, -1, 0))
@@ -163,7 +199,7 @@ fn eval(expr: Expr) -> Expr {
                 func_not_lam => Expr::App(Box::new(func_not_lam), Box::new(arg_evaled)),
             }
         }
-        Expr::Lam(body) => Expr::Lam(Box::new(eval(*body))),
+        Expr::Lam(name, body) => Expr::Lam(name.clone(), Box::new(eval(*body))),
         _ => expr,
     }
 }
@@ -180,84 +216,185 @@ fn eval_dbr(expr: NamedExpr) -> NamedExpr {
 }
 
 fn main() {
-    // this is a dummy comment for a PR test
-    let id = app(lam("x", var("x")), var("a"));
+    //let id = app(lam("x", var("x")), var("a"));
     //let id = lam("x", var("y"));
-    eval_dbr(id);
+    //eval_dbr(id);
+    //
+    //let test = app(lam("x", lam("y", app(var("x"), var("y")))), var("z"));
+    //eval_dbr(test);
+    //
+    //let t = lam("x", lam("y", var("x")));
+    //let t_app = app(app(t.clone(), var("y")), var("z"));
+    //eval_dbr(t_app);
+    //
+    //eval_dbr(var("x"));
+    //
+    //let expr = app(
+    //    app(
+    //        lam("x", lam("y", app(var("x"), var("y")))),
+    //        lam("z", var("z")),
+    //    ),
+    //    var("a"),
+    //);
+    //eval_dbr(expr);
+    //
+    //let expr = app(
+    //    lam("x", app(var("x"), lam("y", var("y")))),
+    //    lam("z", app(var("z"), var("z"))),
+    //);
+    //eval_dbr(expr);
+    //
+    //let expr = app(
+    //    lam("x", app(lam("x", var("x")), app(var("x"), var("x")))),
+    //    lam("y", var("y")),
+    //);
+    //eval_dbr(expr);
+    //
+    //let expr = app(
+    //    app(
+    //        lam(
+    //            "a",
+    //            lam("b", app(var("a"), lam("c", app(var("b"), var("c"))))),
+    //        ),
+    //        lam("x", app(var("x"), var("x"))),
+    //    ),
+    //    lam("y", var("y")),
+    //);
+    //eval_dbr(expr);
+    //
+    //let expr = app(
+    //    app(
+    //        app(
+    //            lam(
+    //                "f",
+    //                lam(
+    //                    "g",
+    //                    lam("x", app(var("f"), app(var("g"), app(var("g"), var("x"))))),
+    //                ),
+    //            ),
+    //            var("inc"), // imagine this is +1
+    //        ),
+    //        var("dbl"), // imagine this is *2
+    //    ),
+    //    var("z"),
+    //);
+    //eval_dbr(expr);
+    //
+    //let expr = app(
+    //    app(
+    //        lam("x", lam("y", app(var("x"), app(var("y"), var("y"))))),
+    //        lam("a", lam("b", app(var("b"), var("a")))),
+    //    ),
+    //    lam("c", var("c")),
+    //);
+    //eval_dbr(expr);
 
-    let test = app(lam("x", lam("y", app(var("x"), var("y")))), var("z"));
-    eval_dbr(test);
+    // BUG: evaluates incorrectly
+    let expr = app(
+        lam("x", app(var("x"), var("x"))),
+        lam("y", lam("z", var("y"))),
+    );
+    eval_dbr(expr);
 
-    let t = lam("x", lam("y", var("x")));
-    let t_app = app(app(t.clone(), var("y")), var("z"));
-    eval_dbr(t_app);
-
-    eval_dbr(var("x"));
+    let expr = app(lam("x", lam("y", var("x"))), var("y"));
+    eval_dbr(expr);
 
     let expr = app(
         app(
-            lam("x", lam("y", app(var("x"), var("y")))),
-            lam("z", var("z")),
+            lam(
+                "x",
+                lam("y", app(var("x"), lam("x", app(var("y"), var("x"))))),
+            ),
+            lam("a", var("a")),
         ),
-        var("a"),
+        lam("b", var("b")),
     );
     eval_dbr(expr);
 
     let expr = app(
-        lam("x", app(var("x"), lam("y", var("y")))),
-        lam("z", app(var("z"), var("z"))),
-    );
-    eval_dbr(expr);
-
-    let expr = app(
-        lam("x", app(lam("x", var("x")), app(var("x"), var("x")))),
-        lam("y", var("y")),
+        lam("f", app(var("f"), lam("x", var("x")))),
+        lam("g", lam("h", app(var("h"), var("g")))),
     );
     eval_dbr(expr);
 
     let expr = app(
         app(
             lam(
-                "a",
-                lam("b", app(var("a"), lam("c", app(var("b"), var("c"))))),
+                "x",
+                lam("y", app(var("x"), lam("x", app(var("y"), var("x"))))),
             ),
-            lam("x", app(var("x"), var("x"))),
+            lam("z", var("z")),
         ),
-        lam("y", var("y")),
+        lam("w", app(var("w"), var("w"))),
     );
     eval_dbr(expr);
 
     let expr = app(
         app(
+            lam(
+                "x",
+                lam("y", app(var("y"), lam("z", app(var("x"), var("z"))))),
+            ),
+            lam("u", var("u")),
+        ),
+        lam("v", var("v")),
+    );
+    eval_dbr(expr);
+
+    let expr = app(
+        lam(
+            "x",
             app(
+                lam("y", app(var("x"), lam("x", app(var("y"), var("x"))))),
+                lam("z", var("z")),
+            ),
+        ),
+        lam("w", var("w")),
+    );
+    eval_dbr(expr);
+
+    let expr = app(
+        app(
+            // S = λx.λy.λz. x z (y z)
+            lam(
+                "x",
                 lam(
-                    "f",
-                    lam(
-                        "g",
-                        lam("x", app(var("f"), app(var("g"), app(var("g"), var("x"))))),
+                    "y",
+                    lam("z", app(app(var("x"), var("z")), app(var("y"), var("z")))),
+                ),
+            ),
+            // K = λx.λy. x
+            lam("x", lam("y", var("x"))),
+        ),
+        // K = λx.λy. x
+        lam("x", lam("y", var("x"))),
+    );
+    eval_dbr(expr);
+
+    let expr = app(
+        // PRED = λn.λf.λx.
+        //   n (λg.λh. h (g f)) (λu. x) (λu. u)
+        lam(
+            "n",
+            lam(
+                "f",
+                lam(
+                    "x",
+                    app(
+                        app(
+                            app(
+                                var("n"),
+                                lam("g", lam("h", app(var("h"), app(var("g"), var("f"))))),
+                            ),
+                            lam("u", var("x")),
+                        ),
+                        lam("u", var("u")),
                     ),
                 ),
-                var("inc"), // imagine this is +1
             ),
-            var("dbl"), // imagine this is *2
         ),
-        var("z"),
-    );
-    eval_dbr(expr);
-
-    let expr = app(
-        app(
-            lam("x", lam("y", app(var("x"), app(var("y"), var("y"))))),
-            lam("a", lam("b", app(var("b"), var("a")))),
-        ),
-        lam("c", var("c")),
-    );
-    eval_dbr(expr);
-
-    // BUG: evaluates incorrectly
-    let expr = app(
-        lam("x", app(var("x"), var("x"))),
-        lam("y", lam("z", var("y"))),
+        // TWO = λf.λx. f (f x)
+        lam("f", lam("x", app(var("f"), app(var("f"), var("x"))))),
     );
     eval_dbr(expr);
 }
