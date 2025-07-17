@@ -122,6 +122,7 @@ impl Display for NamedExpr {
 }
 
 fn subst(root: &Expr, var: usize, value: &Expr) -> Expr {
+    // [var := value]root
     match root {
         Expr::Var(idx) => {
             if *idx == var {
@@ -147,13 +148,14 @@ fn eval(expr: Expr) -> Expr {
                 let res = subst(&body, 0, &arg_shifted);
                 shift(&res, -1, 0)
             }
+            // NOTE: wrong?
             func_not_lam => Expr::App(Box::new(func_not_lam), arg),
         },
         _ => expr,
     }
 }
 
-fn eval_dbr(expr: NamedExpr) {
+fn eval_dbr(expr: NamedExpr) -> NamedExpr {
     //println!("lambda: {} evals to {}", expr, eval_named(expr.clone()));
     let mut ctx = vec![];
     let debruijn_expr = to_debruijn(&expr, &mut ctx);
@@ -161,9 +163,11 @@ fn eval_dbr(expr: NamedExpr) {
     let mut out_ctx = vec![];
     let printed = from_debruijn(&res, &mut out_ctx);
     println!("Debruijn: {} evals to {}\n", expr, printed);
+    printed
 }
 
 fn main() {
+    // this is a dummy comment for a PR test
     let id = app(lam("x", var("x")), var("a"));
     //let id = lam("x", var("y"));
     eval_dbr(id);
@@ -174,4 +178,6 @@ fn main() {
     let t = lam("x", lam("y", var("x")));
     let t_app = app(t.clone(), var("y"));
     eval_dbr(t_app);
+
+    eval_dbr(var("x"));
 }
