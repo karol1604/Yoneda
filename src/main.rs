@@ -8,17 +8,6 @@ enum Expr {
     App(Box<Expr>, Box<Expr>),
 }
 
-impl Display for Expr {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Expr::Var(idx) => write!(f, "x_{}", idx),
-            Expr::Free(name) => write!(f, "{}", name),
-            Expr::Lam(body) => write!(f, "λ.{}", body),
-            Expr::App(lam, arg) => write!(f, "({}) {}", lam, arg),
-        }
-    }
-}
-
 /// Converts a named expression to a de Bruijn index expression.
 /// `ctx` is used to keep track of variable names in scope and their indices.
 fn to_debruijn(expr: &NamedExpr, ctx: &mut Vec<String>) -> Expr {
