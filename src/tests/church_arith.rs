@@ -190,38 +190,3 @@ fn test_iszero_zero() {
     let expected = church_true();
     assert_eq!(result, expected);
 }
-//
-//    let expr = app(
-//        // ISZERO = λn. n (λx.FALSE) TRUE
-//        lam(
-//            "n",
-//            app(
-//                app(
-//                    var("n"),
-//                    // λx.FALSE
-//                    lam("x", lam("a", lam("b", var("b")))),
-//                ),
-//                // TRUE
-//                lam("a", lam("b", var("a"))),
-//            ),
-//        ),
-//        // ZERO = λf.λx. x
-//        lam("f", lam("x", var("x"))),
-//    );
-//    eval_dbr(expr);
-//
-//    let expr = app(
-//        app(
-//            // EXP = λm.λn. n m
-//            lam("m", lam("n", app(var("n"), var("m")))),
-//            // THREE = λf.λx. f (f (f x))
-//            lam(
-//                "f",
-//                lam("x", app(var("f"), app(var("f"), app(var("f"), var("x"))))),
-//            ),
-//        ),
-//        // TWO = λf.λx. f (f x)
-//        lam("f", lam("x", app(var("f"), app(var("f"), var("x"))))),
-//    );
-//    eval_dbr(expr);
-//}
