@@ -312,3 +312,6 @@ fn main() {
     );
     eval_dbr(expr);
 }
+
+#[cfg(test)]
+mod tests;

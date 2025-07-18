@@ -5,9 +5,11 @@ pub enum Type {
     Arrow(Box<Type>, Box<Type>), // T1 -> T2
 }
 
-#[derive(Clone)]
+type Ctx = Vec<String>; // Context of variable names
+
+#[derive(Clone, Debug, PartialEq)]
 pub enum Term {
-    Free(String),
+    Free(String), // Unbound
 
     Bound(usize), // Debruijn index
 
@@ -64,7 +66,7 @@ fn collect_free_vars(expr: &Term) -> HashSet<String> {
 
 /// Converts a named expression to a de Bruijn index expression.
 /// `ctx` is used to keep track of variable names in scope and their indices.
-fn to_debruijn(expr: &Term, ctx: &mut Vec<String>) -> Term {
+fn to_debruijn(expr: &Term, ctx: &mut Ctx) -> Term {
     match expr {
         Term::Bound(idx) => Term::Bound(*idx),
         Term::Free(name) => {
@@ -96,7 +98,7 @@ fn to_debruijn(expr: &Term, ctx: &mut Vec<String>) -> Term {
 /// `ctx` is used to keep track of variable names in scope.
 /// Currently, the program does not keep track of the original names of variables,
 /// so it generates new names of the form `x_i` using the `fresh_var_name` function.
-fn from_debruijn(expr: &Term, ctx: &mut Vec<String>) -> Term {
+fn from_debruijn(expr: &Term, ctx: &mut Ctx) -> Term {
     match expr {
         Term::Bound(i) => {
             let idx = ctx.len() - 1 - i;
