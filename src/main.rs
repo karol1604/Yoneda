@@ -139,6 +139,44 @@ fn subst(root: &Expr, var: usize, value: &Expr) -> Expr {
     }
 }
 
+
+
+fn eval_once(expr: Expr) -> Option<Expr> {
+    match expr {
+        Expr::App(func, arg) => {
+            let func_clone = func.clone();
+            let arg_clone = arg.clone();
+            match *func {
+                Expr::Lam(body) => {
+                    // Beta-reduction
+                    let arg_shifted = shift(&arg, 1, 0);
+                    let res = subst(&body, 0, &arg_shifted);
+                    Some(shift(&res, -1, 0))
+                }
+                func_not_lam => {
+                    // Try reducing either side
+                    eval_once(*func_clone).map(|new_func| Expr::App(Box::new(new_func), arg))
+                        .or_else(|| eval_once(*arg_clone).map(|new_arg| Expr::App(Box::new(func_not_lam), Box::new(new_arg))))
+                }
+            }
+        }
+
+        Expr::Lam(body) => {
+            eval_once(*body).map(|new_body| Expr::Lam(Box::new(new_body)))
+        }
+        Expr::Var(_) | Expr::Free(_) => None,
+    }
+}
+
+fn eval_full(mut expr: Expr) -> Expr{
+    while let Some(next) = eval_once(expr.clone()) {
+        expr = next;
+    }
+
+    expr
+}
+
+/*
 fn eval(expr: Expr) -> Expr {
     match expr {
         Expr::App(func, arg) => match *func {
@@ -152,15 +190,29 @@ fn eval(expr: Expr) -> Expr {
         _ => expr,
     }
 }
+ */
 
 fn eval_dbr(expr: NamedExpr) {
     //println!("lambda: {} evals to {}", expr, eval_named(expr.clone()));
     let mut ctx = vec![];
     let debruijn_expr = to_debruijn(&expr, &mut ctx);
-    let res = eval(debruijn_expr);
+    let res = eval_full(debruijn_expr);
     let mut out_ctx = vec![];
     let printed = from_debruijn(&res, &mut out_ctx);
     println!("Debruijn: {} evals to {}\n", expr, printed);
+}
+fn test_multy_reduc(){
+    let identity = lam("x",var("x"));
+    let inner = app(lam("y",var("y")),var("z"));
+    let expr = app(identity, inner);
+    println!("Original, {}", expr);
+
+    let mut ctx = vec![];
+    let db_expr = to_debruijn(&expr, &mut ctx);
+    let reduced = eval_full(db_expr);
+    let mut out_ctx = vec![];
+    let named = from_debruijn(&reduced, &mut out_ctx);
+    println!("Reduced : {}",named)
 }
 
 fn main() {
@@ -174,4 +226,6 @@ fn main() {
     let t = lam("x", lam("y", var("x")));
     let t_app = app(t.clone(), var("y"));
     eval_dbr(t_app);
+
+    test_multy_reduc()
 }
