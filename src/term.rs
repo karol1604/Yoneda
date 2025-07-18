@@ -138,10 +138,10 @@ fn from_debruijn(expr: &Term, ctx: &mut Vec<String>) -> Term {
     }
 }
 
-fn shift(expr: &Term, d: isize, cuttof: usize) -> Term {
+fn shift(expr: &Term, d: isize, cutoff: usize) -> Term {
     match expr {
         Term::Bound(idx) => {
-            if *idx >= cuttof {
+            if *idx >= cutoff {
                 Term::Bound(((*idx as isize) + d) as usize)
             } else {
                 Term::Bound(*idx)
@@ -150,11 +150,11 @@ fn shift(expr: &Term, d: isize, cuttof: usize) -> Term {
         Term::Free(name) => Term::Free(name.clone()),
         Term::Lam { name, body } => Term::Lam {
             name: name.clone(),
-            body: Box::new(shift(body, d, cuttof + 1)),
+            body: Box::new(shift(body, d, cutoff + 1)),
         },
         Term::App { func, arg } => Term::App {
-            func: Box::new(shift(func, d, cuttof)),
-            arg: Box::new(shift(arg, d, cuttof)),
+            func: Box::new(shift(func, d, cutoff)),
+            arg: Box::new(shift(arg, d, cutoff)),
         },
     }
 }
