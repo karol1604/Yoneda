@@ -171,7 +171,7 @@ fn to_debruijn(expr: &Term, ctx: &mut Ctx) -> Term {
 /// `ctx` is used to keep track of variable names in scope.
 /// Currently, the program does not keep track of the original names of variables,
 /// so it generates new names of the form `x_i` using the `fresh_var_name` function.
-fn from_debruijn(expr: &Term, ctx: &mut Ctx) -> Term {
+pub fn from_debruijn(expr: &Term, ctx: &mut Ctx) -> Term {
     match expr {
         Term::Bound(i) => {
             let idx = ctx.len() - 1 - i;
@@ -349,6 +349,5 @@ pub fn eval_dbr(expr: Term) -> Term {
     let res = eval(debruijn_expr);
     let mut out_ctx = vec![];
     let printed = from_debruijn(&res, &mut out_ctx);
-    //println!("Debruijn: {} evals to {}\n", expr, printed);
     printed
 }

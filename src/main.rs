@@ -1,6 +1,6 @@
 mod term;
-use std::collections::HashMap;
 
+use std::collections::HashMap;
 use term::{Type, eval_dbr, eval_dbr_typed, lam, type_of, var};
 
 fn main() {
