@@ -1,4 +1,4 @@
-use crate::{app, eval_dbr, lam, term::Term, var};
+use crate::term::{Term, app, eval_dbr, lam, var};
 
 /// Build the Church‐numeral for n
 fn church(n: usize) -> Term {

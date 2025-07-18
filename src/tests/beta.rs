@@ -1,4 +1,4 @@
-use crate::{app, eval_dbr, lam, var};
+use crate::term::{app, eval_dbr, lam, var};
 
 #[test]
 fn id_fn() {
