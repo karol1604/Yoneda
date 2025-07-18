@@ -339,7 +339,7 @@ pub fn eval_dbr_typed(expr: Term) -> Term {
     let res = eval(debruijn_expr);
     let mut out_ctx = vec![];
     let printed = from_debruijn(&res, &mut out_ctx);
-    //println!("Debruijn: {} evals to {}\n", expr, printed);
+    
     printed
 }
 
