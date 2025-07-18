@@ -1,6 +1,3 @@
-mod term;
-use term::{app, eval_dbr, lam, var};
-
 fn main() {
     println!("Starting evaluation of lambda expressions...");
 
@@ -67,7 +64,6 @@ fn main() {
     );
     eval_dbr(expr);
 
-
     let expr = app(
         app(
             lam("x", lam("y", app(var("x"), app(var("y"), var("y"))))),
@@ -98,7 +94,6 @@ fn main() {
         lam("b", var("b")),
     );
     eval_dbr(expr);
-
 
     let expr = app(
         lam("f", app(var("f"), lam("x", var("x")))),
@@ -313,6 +308,7 @@ fn main() {
         lam("f", lam("x", app(var("f"), app(var("f"), var("x"))))),
     );
     eval_dbr(expr);
+    println!("Evaluating a simple term...");
 }
 
 #[cfg(test)]
