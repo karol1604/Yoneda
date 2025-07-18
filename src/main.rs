@@ -1,231 +1,319 @@
-use std::fmt::Display;
-
-#[derive(Clone)]
-enum Expr {
-    Var(usize),
-    Free(String), // unbound variable, not sure about this
-    Lam(Box<Expr>),
-    App(Box<Expr>, Box<Expr>),
-}
-
-fn to_debruijn(expr: &NamedExpr, ctx: &mut Vec<String>) -> Expr {
-    match expr {
-        NamedExpr::Var(name) => {
-            let idx = ctx.iter().rev().position(|n| n == name);
-
-            if let Some(idx) = idx {
-                Expr::Var(idx)
-            } else {
-                Expr::Free(name.clone())
-            }
-        }
-        NamedExpr::Lam(param, body) => {
-            ctx.push(param.clone());
-            let res = Expr::Lam(Box::new(to_debruijn(body, ctx)));
-            ctx.pop();
-            res
-        }
-        NamedExpr::App(lam, arg) => Expr::App(
-            Box::new(to_debruijn(lam, ctx)),
-            Box::new(to_debruijn(arg, ctx)),
-        ),
-    }
-}
-
-fn from_debruijn(expr: &Expr, ctx: &mut Vec<String>) -> NamedExpr {
-    match expr {
-        Expr::Var(i) => {
-            let idx = ctx.len() - 1 - i;
-            NamedExpr::Var(ctx[idx].clone())
-        }
-        Expr::Lam(expr) => {
-            let name = fresh_var_name(ctx);
-            ctx.push(name.clone());
-            let res = NamedExpr::Lam(name, Box::new(from_debruijn(expr, ctx)));
-            ctx.pop();
-            res
-        }
-        Expr::App(lam, arg) => NamedExpr::App(
-            Box::new(from_debruijn(lam, ctx)),
-            Box::new(from_debruijn(arg, ctx)),
-        ),
-        Expr::Free(name) => NamedExpr::Var(name.clone()),
-    }
-}
-
-fn shift(expr: &Expr, d: isize, cuttof: usize) -> Expr {
-    match expr {
-        Expr::Var(idx) => {
-            if *idx >= cuttof {
-                Expr::Var(((*idx as isize) + d) as usize)
-            } else {
-                Expr::Var(*idx)
-            }
-        }
-        Expr::Free(name) => Expr::Free(name.clone()),
-        Expr::Lam(body) => Expr::Lam(Box::new(shift(body, d, cuttof + 1))),
-        Expr::App(lam, arg) => Expr::App(
-            Box::new(shift(lam, d, cuttof)),
-            Box::new(shift(arg, d, cuttof)),
-        ),
-    }
-}
-
-fn fresh_var_name(ctx: &[String]) -> String {
-    let mut i = 0;
-    loop {
-        let name = format!("x_{}", i);
-        if !ctx.contains(&name) {
-            return name;
-        }
-        i += 1;
-    }
-}
-
-#[derive(Clone)]
-enum NamedExpr {
-    //Expr can be a Variabel, lambda function or Application
-    Var(String),
-    Lam(String, Box<NamedExpr>),
-    App(Box<NamedExpr>, Box<NamedExpr>),
-}
-
-fn var(name: &str) -> NamedExpr {
-    NamedExpr::Var(name.to_string())
-}
-
-fn lam(param: &str, body: NamedExpr) -> NamedExpr {
-    NamedExpr::Lam(param.to_string(), Box::new(body))
-}
-
-fn app(func: NamedExpr, arg: NamedExpr) -> NamedExpr {
-    NamedExpr::App(Box::new(func), Box::new(arg))
-}
-
-impl Display for NamedExpr {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            NamedExpr::Var(name) => write!(f, "{}", name),
-            NamedExpr::Lam(param, body) => write!(f, "λ{}.{}", param, body),
-            NamedExpr::App(func, arg) => {
-                match func.as_ref() {
-                    NamedExpr::Lam(_, _) => write!(f, "({})", func),
-                    _ => write!(f, "{}", func),
-                }?;
-                match arg.as_ref() {
-                    NamedExpr::Lam(_, _) => write!(f, " ({})", arg),
-                    _ => write!(f, " {}", arg),
-                }
-            }
-        }
-    }
-}
-
-fn subst(root: &Expr, var: usize, value: &Expr) -> Expr {
-    match root {
-        Expr::Var(idx) => {
-            if *idx == var {
-                shift(value, var as isize, 0)
-            } else {
-                Expr::Var(*idx)
-            }
-        }
-        Expr::Free(name) => Expr::Free(name.clone()),
-        Expr::Lam(body) => Expr::Lam(Box::new(subst(body, var + 1, value))),
-        Expr::App(lam, arg) => Expr::App(
-            Box::new(subst(lam, var, value)),
-            Box::new(subst(arg, var, value)),
-        ),
-    }
-}
-
-
-
-fn eval_once(expr: Expr) -> Option<Expr> {
-    match expr {
-        Expr::App(func, arg) => {
-            let func_clone = func.clone();
-            let arg_clone = arg.clone();
-            match *func {
-                Expr::Lam(body) => {
-                    // Beta-reduction
-                    let arg_shifted = shift(&arg, 1, 0);
-                    let res = subst(&body, 0, &arg_shifted);
-                    Some(shift(&res, -1, 0))
-                }
-                func_not_lam => {
-                    // Try reducing either side
-                    eval_once(*func_clone).map(|new_func| Expr::App(Box::new(new_func), arg))
-                        .or_else(|| eval_once(*arg_clone).map(|new_arg| Expr::App(Box::new(func_not_lam), Box::new(new_arg))))
-                }
-            }
-        }
-
-        Expr::Lam(body) => {
-            eval_once(*body).map(|new_body| Expr::Lam(Box::new(new_body)))
-        }
-        Expr::Var(_) | Expr::Free(_) => None,
-    }
-}
-
-fn eval_full(mut expr: Expr) -> Expr{
-    while let Some(next) = eval_once(expr.clone()) {
-        expr = next;
-    }
-
-    expr
-}
-
-/*
-fn eval(expr: Expr) -> Expr {
-    match expr {
-        Expr::App(func, arg) => match *func {
-            Expr::Lam(body) => {
-                let arg_shifted = shift(&arg, 1, 0);
-                let res = subst(&body, 0, &arg_shifted);
-                shift(&res, -1, 0)
-            }
-            func_not_lam => Expr::App(Box::new(func_not_lam), arg),
-        },
-        _ => expr,
-    }
-}
- */
-
-fn eval_dbr(expr: NamedExpr) {
-    //println!("lambda: {} evals to {}", expr, eval_named(expr.clone()));
-    let mut ctx = vec![];
-    let debruijn_expr = to_debruijn(&expr, &mut ctx);
-    let res = eval_full(debruijn_expr);
-    let mut out_ctx = vec![];
-    let printed = from_debruijn(&res, &mut out_ctx);
-    println!("Debruijn: {} evals to {}\n", expr, printed);
-}
-fn test_multy_reduc(){
-    let identity = lam("x",var("x"));
-    let inner = app(lam("y",var("y")),var("z"));
-    let expr = app(identity, inner);
-    println!("Original, {}", expr);
-
-    let mut ctx = vec![];
-    let db_expr = to_debruijn(&expr, &mut ctx);
-    let reduced = eval_full(db_expr);
-    let mut out_ctx = vec![];
-    let named = from_debruijn(&reduced, &mut out_ctx);
-    println!("Reduced : {}",named)
-}
+mod term;
+use term::{app, eval_dbr, lam, var};
 
 fn main() {
+    println!("Starting evaluation of lambda expressions...");
+
     let id = app(lam("x", var("x")), var("a"));
-    //let id = lam("x", var("y"));
     eval_dbr(id);
 
     let test = app(lam("x", lam("y", app(var("x"), var("y")))), var("z"));
     eval_dbr(test);
 
     let t = lam("x", lam("y", var("x")));
-    let t_app = app(t.clone(), var("y"));
+    let t_app = app(app(t.clone(), var("y")), var("z"));
     eval_dbr(t_app);
 
-    test_multy_reduc()
+    eval_dbr(var("x"));
+
+    let expr = app(
+        app(
+            lam("x", lam("y", app(var("x"), var("y")))),
+            lam("z", var("z")),
+        ),
+        var("a"),
+    );
+    eval_dbr(expr);
+
+    let expr = app(
+        lam("x", app(var("x"), lam("y", var("y")))),
+        lam("z", app(var("z"), var("z"))),
+    );
+    eval_dbr(expr);
+
+    let expr = app(
+        lam("x", app(lam("x", var("x")), app(var("x"), var("x")))),
+        lam("y", var("y")),
+    );
+    eval_dbr(expr);
+
+    let expr = app(
+        app(
+            lam(
+                "a",
+                lam("b", app(var("a"), lam("c", app(var("b"), var("c"))))),
+            ),
+            lam("x", app(var("x"), var("x"))),
+        ),
+        lam("y", var("y")),
+    );
+    eval_dbr(expr);
+
+    let expr = app(
+        app(
+            app(
+                lam(
+                    "f",
+                    lam(
+                        "g",
+                        lam("x", app(var("f"), app(var("g"), app(var("g"), var("x"))))),
+                    ),
+                ),
+                var("inc"), // imagine this is +1
+            ),
+            var("dbl"), // imagine this is *2
+        ),
+        var("z"),
+    );
+    eval_dbr(expr);
+
+
+    let expr = app(
+        app(
+            lam("x", lam("y", app(var("x"), app(var("y"), var("y"))))),
+            lam("a", lam("b", app(var("b"), var("a")))),
+        ),
+        lam("c", var("c")),
+    );
+    eval_dbr(expr);
+
+    // BUG: evaluates incorrectly
+    let expr = app(
+        lam("x", app(var("x"), var("x"))),
+        lam("y", lam("z", var("y"))),
+    );
+    eval_dbr(expr);
+
+    let expr = app(lam("x", lam("y", var("x"))), var("y"));
+    eval_dbr(expr);
+
+    let expr = app(
+        app(
+            lam(
+                "x",
+                lam("y", app(var("x"), lam("x", app(var("y"), var("x"))))),
+            ),
+            lam("a", var("a")),
+        ),
+        lam("b", var("b")),
+    );
+    eval_dbr(expr);
+
+
+    let expr = app(
+        lam("f", app(var("f"), lam("x", var("x")))),
+        lam("g", lam("h", app(var("h"), var("g")))),
+    );
+    eval_dbr(expr);
+
+    let expr = app(
+        app(
+            lam(
+                "x",
+                lam("y", app(var("x"), lam("x", app(var("y"), var("x"))))),
+            ),
+            lam("z", var("z")),
+        ),
+        lam("w", app(var("w"), var("w"))),
+    );
+    eval_dbr(expr);
+
+    let expr = app(
+        app(
+            lam(
+                "x",
+                lam("y", app(var("y"), lam("z", app(var("x"), var("z"))))),
+            ),
+            lam("u", var("u")),
+        ),
+        lam("v", var("v")),
+    );
+    eval_dbr(expr);
+
+    let expr = app(
+        lam(
+            "x",
+            app(
+                lam("y", app(var("x"), lam("x", app(var("y"), var("x"))))),
+                lam("z", var("z")),
+            ),
+        ),
+        lam("w", var("w")),
+    );
+    eval_dbr(expr);
+
+    let expr = app(
+        app(
+            // S = λx.λy.λz. x z (y z)
+            lam(
+                "x",
+                lam(
+                    "y",
+                    lam("z", app(app(var("x"), var("z")), app(var("y"), var("z")))),
+                ),
+            ),
+            // K = λx.λy. x
+            lam("x", lam("y", var("x"))),
+        ),
+        // K = λx.λy. x
+        lam("x", lam("y", var("x"))),
+    );
+    eval_dbr(expr);
+
+    let expr = app(
+        // PRED = λn.λf.λx.
+        //   n (λg.λh. h (g f)) (λu. x) (λu. u)
+        lam(
+            "n",
+            lam(
+                "f",
+                lam(
+                    "x",
+                    app(
+                        app(
+                            app(
+                                var("n"),
+                                lam("g", lam("h", app(var("h"), app(var("g"), var("f"))))),
+                            ),
+                            lam("u", var("x")),
+                        ),
+                        lam("u", var("u")),
+                    ),
+                ),
+            ),
+        ),
+        // TWO = λf.λx. f (f x)
+        lam("f", lam("x", app(var("f"), app(var("f"), var("x"))))),
+    );
+    eval_dbr(expr);
+
+    let expr = app(
+        // fst = λp. p (λx.λy.x)
+        lam("p", app(var("p"), lam("x", lam("y", var("x"))))),
+        // pair TWO THREE = (λx.λy.λf. f x y) TWO THREE
+        app(
+            app(
+                lam(
+                    "x",
+                    lam("y", lam("f", app(app(var("f"), var("x")), var("y")))),
+                ),
+                // TWO  = λf.λx. f (f x)
+                lam("f", lam("x", app(var("f"), app(var("f"), var("x"))))),
+            ),
+            // THREE = λf.λx. f (f (f x))
+            lam(
+                "f",
+                lam("x", app(var("f"), app(var("f"), app(var("f"), var("x"))))),
+            ),
+        ),
+    );
+    eval_dbr(expr);
+
+    let expr = app(
+        // snd = λp. p (λx.λy. y)
+        lam("p", app(var("p"), lam("x", lam("y", var("y"))))),
+        // pair TWO THREE
+        app(
+            app(
+                // pair = λx.λy.λf. f x y
+                lam(
+                    "x",
+                    lam("y", lam("f", app(app(var("f"), var("x")), var("y")))),
+                ),
+                // TWO   = λf.λx. f (f x)
+                lam("f", lam("x", app(var("f"), app(var("f"), var("x"))))),
+            ),
+            // THREE = λf.λx. f (f (f x))
+            lam(
+                "f",
+                lam("x", app(var("f"), app(var("f"), app(var("f"), var("x"))))),
+            ),
+        ),
+    );
+    eval_dbr(expr);
+
+    let expr = app(
+        // MULT = λm.λn.λf. m (n f)
+        lam(
+            "m",
+            lam("n", lam("f", app(var("m"), app(var("n"), var("f"))))),
+        ),
+        // TWO = λf.λx. f (f x)
+        lam("f", lam("x", app(var("f"), app(var("f"), var("x"))))),
+    );
+    // then apply MULT to THREE
+    let expr = app(
+        expr,
+        lam(
+            "f",
+            lam("x", app(var("f"), app(var("f"), app(var("f"), var("x"))))),
+        ),
+    );
+    eval_dbr(expr);
+
+    let expr = app(
+        // EXP = λm.λn. n m
+        lam("m", lam("n", app(var("n"), var("m")))),
+        // TWO
+        lam("f", lam("x", app(var("f"), app(var("f"), var("x"))))),
+    );
+    // then apply EXP TWO to THREE
+    let expr = app(
+        expr,
+        lam(
+            "f",
+            lam("x", app(var("f"), app(var("f"), app(var("f"), var("x"))))),
+        ),
+    );
+    eval_dbr(expr);
+
+    let expr = app(
+        // OR = λp.λq. p p q
+        lam("p", lam("q", app(app(var("p"), var("p")), var("q")))),
+        // TRUE  = λa.λb. a
+        lam("a", lam("b", var("a"))),
+    );
+    let expr = app(
+        expr,
+        // FALSE = λa.λb. b
+        lam("a", lam("b", var("b"))),
+    );
+    eval_dbr(expr);
+
+    let expr = app(
+        // ISZERO = λn. n (λx.FALSE) TRUE
+        lam(
+            "n",
+            app(
+                app(
+                    var("n"),
+                    // λx.FALSE
+                    lam("x", lam("a", lam("b", var("b")))),
+                ),
+                // TRUE
+                lam("a", lam("b", var("a"))),
+            ),
+        ),
+        // ZERO = λf.λx. x
+        lam("f", lam("x", var("x"))),
+    );
+    eval_dbr(expr);
+
+    let expr = app(
+        app(
+            // EXP = λm.λn. n m
+            lam("m", lam("n", app(var("n"), var("m")))),
+            // THREE = λf.λx. f (f (f x))
+            lam(
+                "f",
+                lam("x", app(var("f"), app(var("f"), app(var("f"), var("x"))))),
+            ),
+        ),
+        // TWO = λf.λx. f (f x)
+        lam("f", lam("x", app(var("f"), app(var("f"), var("x"))))),
+    );
+    eval_dbr(expr);
 }
+
+#[cfg(test)]
+mod tests;
