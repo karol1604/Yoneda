@@ -255,10 +255,11 @@ pub fn var(name: &str) -> Term {
     Term::Free(name.to_string())
 }
 
-pub fn lam(param: &str, ty: Type, body: Term) -> Term {
+// NOTE: default type is "Any" for testing purposes
+pub fn lam(param: &str, body: Term) -> Term {
     Term::Lam {
         name: param.to_string(),
-        ty,
+        ty: Type::Base("Any".to_string()), // Default type, can be changed later
         body: Box::new(body),
     }
 }
@@ -322,8 +323,8 @@ fn eval(expr: Term) -> Term {
     }
 }
 
-pub fn eval_dbr(expr: Term) -> Term {
-    // 1) Type‐check the *named* term
+// NOTE: this is temporarily here bc we ignore types for now
+pub fn eval_dbr_typed(expr: Term) -> Term {
     let mut ty_ctx: TypeCtx = HashMap::new();
     match type_of(&expr, &mut ty_ctx) {
         Ok(ty) => println!("⊢ {} : {}", expr, ty),
@@ -333,6 +334,16 @@ pub fn eval_dbr(expr: Term) -> Term {
         }
     }
 
+    let mut ctx = vec![];
+    let debruijn_expr = to_debruijn(&expr, &mut ctx);
+    let res = eval(debruijn_expr);
+    let mut out_ctx = vec![];
+    let printed = from_debruijn(&res, &mut out_ctx);
+    //println!("Debruijn: {} evals to {}\n", expr, printed);
+    printed
+}
+
+pub fn eval_dbr(expr: Term) -> Term {
     let mut ctx = vec![];
     let debruijn_expr = to_debruijn(&expr, &mut ctx);
     let res = eval(debruijn_expr);

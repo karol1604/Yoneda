@@ -1,4 +1,5 @@
-use crate::{app, eval_dbr, lam, term::Term, var};
+use crate::term::{Term, app, eval_dbr, lam, var};
+use pretty_assertions::assert_eq;
 
 /// Build the Church‐numeral for n
 fn church(n: usize) -> Term {

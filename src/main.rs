@@ -1,20 +1,19 @@
 mod term;
 use std::collections::HashMap;
 
-use term::{Type, app, eval_dbr, lam, type_of, var};
+use term::{Type, eval_dbr, eval_dbr_typed, lam, type_of, var};
 
 fn main() {
     let mut ctx: HashMap<String, Type> = HashMap::new();
-    ctx.insert("b".into(), Type::Base("Int".into()));
+    ctx.insert("b".into(), Type::Base("Any".into()));
 
     // id_int = λx: Int. x
-    let id_int = lam("x", Type::Base("Int".into()), var("x"));
+    let id_int = lam("x", var("x"));
 
     // term = id_int b
     //let term = app(id_int, var("b"));
-    let term = eval_dbr(id_int);
-
-    println!("Term: {:?}", type_of(&term, &mut ctx));
+    let term = eval_dbr_typed(id_int);
+    println!("id_int: {:?}", type_of(&term, &mut ctx));
 }
 
 #[cfg(test)]
