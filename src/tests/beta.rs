@@ -1,4 +1,5 @@
 use crate::term::{app, eval_dbr, lam, var};
+use pretty_assertions::assert_eq;
 
 #[test]
 fn id_fn() {

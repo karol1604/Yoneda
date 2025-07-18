@@ -1,11 +1,83 @@
-use std::{collections::HashSet, fmt::Display};
+use std::{
+    collections::{HashMap, HashSet},
+    fmt::Display,
+};
 
+#[derive(Debug, Clone, PartialEq)]
 pub enum Type {
     Base(String),                // atomic type
     Arrow(Box<Type>, Box<Type>), // T1 -> T2
 }
 
+impl Display for Type {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Type::Base(name) => write!(f, "{}", name),
+            Type::Arrow(t1, t2) => write!(f, "({} -> {})", t1, t2),
+        }
+    }
+}
+
 type Ctx = Vec<String>; // Context of variable names
+type TypeCtx = HashMap<String, Type>; // Context of variable types
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum TypeError {
+    UnboundVar(String),
+    ExpectedArrow(Type),
+    Mismatch { expected: Type, found: Type },
+}
+
+impl Display for TypeError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            TypeError::UnboundVar(x) => write!(f, "unbound variable `{}`", x),
+            TypeError::ExpectedArrow(ty) => write!(f, "expected arrow type, found `{}`", ty),
+            TypeError::Mismatch { expected, found } => write!(
+                f,
+                "type mismatch: expected `{}`, found `{}`",
+                expected, found
+            ),
+        }
+    }
+}
+
+pub fn type_of(term: &Term, ctx: &mut TypeCtx) -> Result<Type, TypeError> {
+    match term {
+        Term::Free(name) => ctx
+            .get(name)
+            .cloned()
+            .ok_or(TypeError::UnboundVar(name.clone())),
+        Term::Bound(idx) => {
+            panic!("unexpected de Bruijn index #{} in named term", idx)
+        }
+        Term::Lam { name, ty, body } => {
+            ctx.insert(name.clone(), ty.clone());
+            let body_type = type_of(body, ctx)?;
+            ctx.remove(name);
+
+            Ok(Type::Arrow(Box::new(ty.clone()), Box::new(body_type)))
+        }
+        Term::App { func, arg } => {
+            let func_type = type_of(func, ctx)?;
+            let arg_type = type_of(arg, ctx)?;
+
+            match func_type {
+                Type::Arrow(param_type, return_type) => {
+                    if *param_type == arg_type {
+                        Ok(*return_type)
+                    } else {
+                        Err(TypeError::Mismatch {
+                            expected: *param_type,
+                            found: arg_type,
+                        })
+                    }
+                }
+                other => Err(TypeError::ExpectedArrow(other)),
+            }
+        }
+    }
+}
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Term {
@@ -15,7 +87,7 @@ pub enum Term {
 
     Lam {
         name: String, // Name of the parameter
-        //ty: Type,
+        ty: Type,
         body: Box<Term>,
     },
 
@@ -30,7 +102,7 @@ impl Display for Term {
         match self {
             Term::Free(name) => write!(f, "{}", name),
             Term::Bound(index) => write!(f, "#{}", index),
-            Term::Lam { name, body } => write!(f, "λ{}.{}", name, body),
+            Term::Lam { name, ty, body } => write!(f, "λ{}:{}.{}", name, ty, body),
             Term::App { func, arg } => {
                 match func.as_ref() {
                     Term::Lam { .. } => write!(f, "({})", func),
@@ -78,10 +150,11 @@ fn to_debruijn(expr: &Term, ctx: &mut Ctx) -> Term {
                 Term::Free(name.clone())
             }
         }
-        Term::Lam { name, body } => {
+        Term::Lam { name, ty, body } => {
             ctx.push(name.clone());
             let res = Term::Lam {
                 name: name.clone(),
+                ty: ty.clone(),
                 body: Box::new(to_debruijn(body, ctx)),
             };
             ctx.pop();
@@ -105,7 +178,11 @@ pub fn from_debruijn(expr: &Term, ctx: &mut Ctx) -> Term {
             Term::Free(ctx[idx].clone())
         }
         Term::Free(name) => Term::Free(name.clone()),
-        Term::Lam { name: orig, body } => {
+        Term::Lam {
+            name: orig,
+            ty,
+            body,
+        } => {
             let free_vars = collect_free_vars(body);
 
             let name = if ctx.contains(orig) || free_vars.contains(orig) {
@@ -127,6 +204,7 @@ pub fn from_debruijn(expr: &Term, ctx: &mut Ctx) -> Term {
 
             let res = Term::Lam {
                 name,
+                ty: ty.clone(),
                 body: Box::new(from_debruijn(body, ctx)),
             };
             ctx.pop();
@@ -150,8 +228,9 @@ fn shift(expr: &Term, d: isize, cutoff: usize) -> Term {
             }
         }
         Term::Free(name) => Term::Free(name.clone()),
-        Term::Lam { name, body } => Term::Lam {
+        Term::Lam { name, ty, body } => Term::Lam {
             name: name.clone(),
+            ty: ty.clone(),
             body: Box::new(shift(body, d, cutoff + 1)),
         },
         Term::App { func, arg } => Term::App {
@@ -176,9 +255,11 @@ pub fn var(name: &str) -> Term {
     Term::Free(name.to_string())
 }
 
+// NOTE: default type is "Any" for testing purposes
 pub fn lam(param: &str, body: Term) -> Term {
     Term::Lam {
         name: param.to_string(),
+        ty: Type::Base("Any".to_string()), // Default type, can be changed later
         body: Box::new(body),
     }
 }
@@ -202,8 +283,9 @@ fn subst(root: &Term, var: usize, value: &Term) -> Term {
             }
         }
         Term::Free(name) => Term::Free(name.clone()),
-        Term::Lam { name, body } => Term::Lam {
+        Term::Lam { name, ty, body } => Term::Lam {
             name: name.clone(),
+            ty: ty.clone(),
             body: Box::new(subst(body, var + 1, value)),
         },
         Term::App { func, arg } => Term::App {
@@ -232,16 +314,36 @@ fn eval(expr: Term) -> Term {
                 },
             }
         }
-        Term::Lam { name, body } => Term::Lam {
+        Term::Lam { name, ty, body } => Term::Lam {
             name,
+            ty,
             body: Box::new(eval(*body)),
         },
         _ => expr,
     }
 }
 
+// NOTE: this is temporarily here bc we ignore types for now
+pub fn eval_dbr_typed(expr: Term) -> Term {
+    let mut ty_ctx: TypeCtx = HashMap::new();
+    match type_of(&expr, &mut ty_ctx) {
+        Ok(ty) => println!("⊢ {} : {}", expr, ty),
+        Err(e) => {
+            eprintln!("type error: {}", e);
+            return expr;
+        }
+    }
+
+    let mut ctx = vec![];
+    let debruijn_expr = to_debruijn(&expr, &mut ctx);
+    let res = eval(debruijn_expr);
+    let mut out_ctx = vec![];
+    let printed = from_debruijn(&res, &mut out_ctx);
+    
+    printed
+}
+
 pub fn eval_dbr(expr: Term) -> Term {
-    //println!("lambda: {} evals to {}", expr, eval_named(expr.clone()));
     let mut ctx = vec![];
     let debruijn_expr = to_debruijn(&expr, &mut ctx);
     let res = eval(debruijn_expr);
