@@ -324,22 +324,27 @@ fn eval(expr: Term) -> Term {
 }
 
 // NOTE: this is temporarily here bc we ignore types for now
-pub fn eval_dbr_typed(expr: Term) -> Term {
-    let mut ty_ctx: TypeCtx = HashMap::new();
-    match type_of(&expr, &mut ty_ctx) {
-        Ok(ty) => println!("⊢ {} : {}", expr, ty),
+pub fn eval_dbr_typed(expr: Term, ty_ctx: &mut TypeCtx) -> Term {
+    //let mut ty_ctx: TypeCtx = HashMap::new();
+    let ty = match type_of(&expr, ty_ctx) {
+        Ok(ty) => {
+            //println!("⊢ {} : {}", expr, ty);
+            ty
+        }
         Err(e) => {
             eprintln!("type error: {}", e);
             return expr;
         }
-    }
+    };
 
     let mut ctx = vec![];
     let debruijn_expr = to_debruijn(&expr, &mut ctx);
     let res = eval(debruijn_expr);
     let mut out_ctx = vec![];
     let printed = from_debruijn(&res, &mut out_ctx);
-    
+
+    println!("⊢ {} : {}", printed, ty);
+
     printed
 }
 
