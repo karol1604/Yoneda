@@ -4,7 +4,7 @@ use crate::term::{Type, TypeCtx, app, typed_eval_dbr, typed_lam, var};
 use pretty_assertions::assert_eq;
 
 fn any() -> Type {
-    Type::Base("Any".into())
+    Type::Base("α".into())
 }
 
 fn arrow(a: Type, b: Type) -> Type {
@@ -124,13 +124,133 @@ fn test_nested_shadowing_and_binding_typed() {
                     app(var("x"), typed_lam("x", app(var("y"), var("x")), any())),
                     arrow(any(), any()),
                 ),
-                arrow(any(), any()),
+                arrow(arrow(any(), any()), arrow(any(), any())),
             ),
             typed_lam("a", var("a"), arrow(any(), any())),
         ),
         typed_lam("b", var("b"), any()),
     );
 
+    let result = typed_eval_dbr(expr, &mut ctx);
+    let expected = typed_lam("x", var("x"), any());
+    assert_eq!(result, expected);
+}
+
+#[test]
+fn test_apply_function_to_identity_argument_typed() {
+    // (λf. f (λx.x)) (λg.λh. h g) → λh. h (λx.x)
+    let mut ctx: TypeCtx = HashMap::new();
+
+    let expr = app(
+        typed_lam(
+            "f",
+            app(
+                var("f"),
+                typed_lam("x", var("x"), any()), // λx:α. x
+            ),
+            // f : (α → α) → ((α → α) → α) → α
+            arrow(
+                arrow(any(), any()), // α → α
+                arrow(
+                    arrow(arrow(any(), any()), any()), // (α → α) → α
+                    any(),                             // α
+                ),
+            ),
+        ),
+        typed_lam(
+            "g",
+            typed_lam(
+                "h",
+                app(var("h"), var("g")),
+                // h : (α → α) → α
+                arrow(arrow(any(), any()), any()),
+            ),
+            // g : α → α
+            arrow(any(), any()),
+        ),
+    );
+
+    let result = typed_eval_dbr(expr, &mut ctx);
+    let expected = typed_lam(
+        "h",
+        app(var("h"), typed_lam("x", var("x"), any())),
+        arrow(arrow(any(), any()), any()),
+    );
+    assert_eq!(result, expected);
+}
+
+#[test]
+fn test_flipped_application_then_reduce_to_identity_typed() {
+    let mut ctx: TypeCtx = HashMap::new();
+    // ((λx.λy. y (λz. x z)) (λu.u)) (λv.v)
+    // → λz. z
+    let expr = app(
+        app(
+            typed_lam(
+                "x",
+                typed_lam(
+                    "y",
+                    app(
+                        var("y"),
+                        // λz:α. x z
+                        typed_lam(
+                            "z",
+                            app(var("x"), var("z")),
+                            any(), // z : α
+                        ),
+                    ),
+                    // y : (α → α) → (α → α)
+                    arrow(arrow(any(), any()), arrow(any(), any())),
+                ),
+                // x : α → α
+                arrow(any(), any()),
+            ),
+            typed_lam("u", var("u"), any()), // u : α
+        ),
+        typed_lam(
+            "v",
+            var("v"),
+            // v : (α → α) → (α → α)
+            arrow(any(), any()),
+        ),
+    );
+
+    let result = typed_eval_dbr(expr, &mut ctx);
+    let expected = typed_lam("z", var("z"), any());
+    assert_eq!(result, expected);
+}
+
+#[test]
+fn test_application_inside_abstraction_typed() {
+    let mut ctx: TypeCtx = HashMap::new();
+    // (λx. (λy. x (λx. y x)) (λz.z)) (λw.w)
+    // → λx. x
+    let expr = app(
+        typed_lam(
+            "x", // x : (α → α) → (α → α)
+            app(
+                typed_lam(
+                    "y", // y : α → α
+                    app(
+                        var("x"),
+                        typed_lam(
+                            "x", // inner x : α
+                            app(var("y"), var("x")),
+                            any(),
+                        ),
+                    ),
+                    arrow(any(), any()),
+                ),
+                typed_lam("z", var("z"), any()), // z : α
+            ),
+            arrow(arrow(any(), any()), arrow(any(), any())),
+        ),
+        typed_lam(
+            "w", // w : α → α
+            var("w"),
+            arrow(any(), any()),
+        ),
+    );
     let result = typed_eval_dbr(expr, &mut ctx);
     let expected = typed_lam("x", var("x"), any());
     assert_eq!(result, expected);
