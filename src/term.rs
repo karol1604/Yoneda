@@ -19,7 +19,7 @@ impl Display for Type {
 }
 
 type Ctx = Vec<String>; // Context of variable names
-type TypeCtx = HashMap<String, Type>; // Context of variable types
+pub type TypeCtx = HashMap<String, Type>; // Context of variable types
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum TypeError {
@@ -52,15 +52,24 @@ pub fn type_of(term: &Term, ctx: &mut TypeCtx) -> Result<Type, TypeError> {
             panic!("unexpected de Bruijn index #{} in named term", idx)
         }
         Term::Lam { name, ty, body } => {
-            ctx.insert(name.clone(), ty.clone());
-            let body_type = type_of(body, ctx)?;
-            ctx.remove(name);
-
-            Ok(Type::Arrow(Box::new(ty.clone()), Box::new(body_type)))
+            //println!("PROCESSING LAM: {} : {}", name, ty);
+            let mut child = ctx.clone();
+            child.insert(name.clone(), ty.clone());
+            let body_ty = type_of(&body, &mut child)?;
+            Ok(Type::Arrow(Box::new(ty.clone()), Box::new(body_ty)))
+            //ctx.insert(name.clone(), ty.clone());
+            //let body_type = type_of(body, ctx)?;
+            //ctx.remove(name);
+            //
+            //Ok(Type::Arrow(Box::new(ty.clone()), Box::new(body_type)))
         }
         Term::App { func, arg } => {
+            //println!("type_of1: func: {}, arg: {}", func, arg);
+
             let func_type = type_of(func, ctx)?;
             let arg_type = type_of(arg, ctx)?;
+
+            //println!("type_of2: func: {}, arg: {}", func, arg_type);
 
             match func_type {
                 Type::Arrow(param_type, return_type) => {
@@ -264,6 +273,14 @@ pub fn lam(param: &str, body: Term) -> Term {
     }
 }
 
+pub fn typed_lam(param: &str, body: Term, ty: Type) -> Term {
+    Term::Lam {
+        name: param.to_string(),
+        ty,
+        body: Box::new(body),
+    }
+}
+
 pub fn app(func: Term, arg: Term) -> Term {
     Term::App {
         func: Box::new(func),
@@ -324,7 +341,7 @@ fn eval(expr: Term) -> Term {
 }
 
 // NOTE: this is temporarily here bc we ignore types for now
-pub fn eval_dbr_typed(expr: Term, ty_ctx: &mut TypeCtx) -> Term {
+pub fn typed_eval_dbr(expr: Term, ty_ctx: &mut TypeCtx) -> Term {
     //let mut ty_ctx: TypeCtx = HashMap::new();
     let ty = match type_of(&expr, ty_ctx) {
         Ok(ty) => {
