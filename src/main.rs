@@ -1,7 +1,8 @@
+mod parser;
 mod term;
 
 use std::collections::HashMap;
-use term::{Type, app, eval_dbr, lam, typed_eval_dbr, typed_lam, var};
+use term::{Type, app, typed_eval_dbr, typed_lam, var};
 
 fn main() {
     let mut ctx: HashMap<String, Type> = HashMap::new();
@@ -21,6 +22,18 @@ fn main() {
     println!("expr: {}", expr);
     let _ = typed_eval_dbr(expr, &mut ctx);
     //println!("result: {}", result);
+    //
+    //let test = "(λxasdasd.λy.x) yasdasd zz ";
+    //let mut lexer = parser::Lexer::new(test);
+    //println!(
+    //    "tok: {}",
+    //    lexer
+    //        .tokenize()
+    //        .iter()
+    //        .map(|t| t.token_kind.clone().to_string())
+    //        .collect::<Vec<_>>()
+    //        .join(" ")
+    //);
 }
 
 #[cfg(test)]
