@@ -60,24 +60,20 @@ impl<'src> Lexer<'src> {
 
     fn collect_term(&mut self) -> String {
         let mut term = String::new();
-        // current already holds the first character of the term
         while let Some(c) = self.current {
             if c.is_alphanumeric() || c == '_' {
                 term.push(c);
             } else {
                 break;
             }
-            // peek at the upcoming char in the iterator…
+
             if let Some(&(_, next_c)) = self.chars.peek() {
                 if next_c.is_alphanumeric() || next_c == '_' {
-                    // safe to advance into it
                     self.advance();
                 } else {
-                    // next is a '.', '(', etc. — stop here
                     break;
                 }
             } else {
-                // we're at EOF; consume this last character
                 self.advance();
                 break;
             }

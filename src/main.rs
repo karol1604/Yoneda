@@ -23,17 +23,17 @@ fn main() {
     let _ = typed_eval_dbr(expr, &mut ctx);
     //println!("result: {}", result);
     //
-    let test = "(λxasdasd.λy.x) yasdasd zz ";
-    let mut lexer = parser::Lexer::new(test);
-    println!(
-        "tok: {}",
-        lexer
-            .tokenize()
-            .iter()
-            .map(|t| t.token_kind.clone().to_string())
-            .collect::<Vec<_>>()
-            .join(" ")
-    );
+    //let test = "(λxasdasd.λy.x) yasdasd zz ";
+    //let mut lexer = parser::Lexer::new(test);
+    //println!(
+    //    "tok: {}",
+    //    lexer
+    //        .tokenize()
+    //        .iter()
+    //        .map(|t| t.token_kind.clone().to_string())
+    //        .collect::<Vec<_>>()
+    //        .join(" ")
+    //);
 }
 
 #[cfg(test)]
