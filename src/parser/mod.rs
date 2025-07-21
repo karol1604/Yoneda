@@ -104,7 +104,10 @@ impl<'src> Lexer<'src> {
                 TokenKind::Term(term)
             }
             None => TokenKind::EOF,
-            _ => panic!("Unexpected character: {:?}", self.current),
+            _ => panic!(
+                "Unexpected character: {:?} at position {}",
+                self.current, self.position
+            ),
         };
         let span_end = self.position;
         let span = Span {
