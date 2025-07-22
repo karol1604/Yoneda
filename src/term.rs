@@ -1,22 +1,8 @@
+use crate::types::Type;
 use std::{
     collections::{HashMap, HashSet},
     fmt::Display,
 };
-
-#[derive(Debug, Clone, PartialEq)]
-pub enum Type {
-    Base(String),                // atomic type
-    Arrow(Box<Type>, Box<Type>), // T1 -> T2
-}
-
-impl Display for Type {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Type::Base(name) => write!(f, "{}", name),
-            Type::Arrow(t1, t2) => write!(f, "({} -> {})", t1, t2),
-        }
-    }
-}
 
 type Ctx = Vec<String>; // Context of variable names
 pub type TypeCtx = HashMap<String, Type>; // Context of variable types

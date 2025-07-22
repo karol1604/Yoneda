@@ -3,9 +3,26 @@ mod term;
 mod types;
 
 use std::collections::HashMap;
-use term::{Type, app, typed_eval_dbr, typed_lam, var};
+use term::{app, typed_eval_dbr, typed_lam, var};
+use types::Type;
+
+use crate::types::infer;
 
 fn main() {
+    let id = typed_lam(
+        "x",
+        var("x"),
+        Type::Arrow(
+            Box::new(Type::Base("α".into())),
+            Box::new(Type::Base("α".into())),
+        ),
+    );
+
+    if let Ok(ty) = infer(&id) {
+        println!("Type of id: {}", ty);
+    } else {
+        println!("Failed to infer type of id");
+    }
     let mut ctx: HashMap<String, Type> = HashMap::new();
     ctx.insert("y".into(), Type::Base("α".into()));
     ctx.insert("z".into(), Type::Base("α".into()));
