@@ -1,5 +1,6 @@
 mod parser;
 mod term;
+mod types;
 
 use std::collections::HashMap;
 use term::{Type, app, typed_eval_dbr, typed_lam, var};

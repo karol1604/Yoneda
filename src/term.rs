@@ -90,7 +90,7 @@ pub fn type_of(term: &Term, ctx: &mut TypeCtx) -> Result<Type, TypeError> {
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Term {
-    Free(String), // Unbound  
+    Free(String), // Unbound
     Bound(usize), // Debruijn index
 
     Lam {
