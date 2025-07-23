@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
-use crate::term::{Type, TypeCtx, app, typed_eval_dbr, typed_lam, var};
+use crate::term::{TypeCtx, app, typed_eval_dbr, typed_lam, var};
+use crate::types::Type;
 use pretty_assertions::assert_eq;
 
 fn any() -> Type {

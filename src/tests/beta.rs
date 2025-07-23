@@ -214,10 +214,10 @@ fn test_application_inside_abstraction() {
     assert_eq!(result, expected);
 }
 #[test]
-fn test_identity_app(){
+fn test_identity_app() {
     // (λx. x) (λy. y) → λy. y
-    let identity = lam("x",var("x"));
-    let argument = lam("y",var("y"));
+    let identity = lam("x", var("x"));
+    let argument = lam("y", var("y"));
     let expr = app(identity, argument);
     let result = eval_dbr(expr);
     let expected = lam("y", var("y"));
