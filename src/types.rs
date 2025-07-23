@@ -120,6 +120,7 @@ impl TypeSubst {
     }
 }
 
+#[derive(Debug)]
 pub enum TypeError {
     UnboundVariable(String),
     Mismatch(Type, Type),
@@ -148,6 +149,19 @@ fn free_type_vars(ty: &Type) -> HashSet<TypeVar> {
         }
     }
 }
+
+fn ftv_scheme(sc: &TypeScheme) -> HashSet<TypeVar> {
+    let mut s = free_type_vars(&sc.body);
+    for q in &sc.forall {
+        s.remove(q);
+    }
+    s
+}
+
+fn ftv_env(env: &TypeEnv) -> HashSet<TypeVar> {
+    env.values().flat_map(ftv_scheme).collect()
+}
+
 fn bind(var: TypeVar, ty: Type) -> Result<TypeSubst, TypeError> {
     if ty == Type::Var(var) {
         return Ok(TypeSubst::default());
@@ -177,6 +191,19 @@ fn unify(t1: &Type, t2: &Type) -> Result<TypeSubst, TypeError> {
         _ => Err(TypeError::Mismatch(t1.clone(), t2.clone())),
     }
 }
+
+fn generalise(env: &TypeEnv, ty: &Type) -> TypeScheme {
+    let qs = free_type_vars(ty)
+        .difference(&ftv_env(env))
+        .cloned()
+        .collect();
+
+    TypeScheme {
+        forall: qs,
+        body: ty.clone(),
+    }
+}
+
 fn infer_term_type(
     term: &Term,
     env: &TypeEnv,
@@ -225,6 +252,23 @@ fn infer_term_type(
             ))
         }
         Term::Bound(_) => unreachable!("Bound variables should not be present in a surface term."),
+        Term::Let {
+            name,
+            value,
+            in_term,
+        } => {
+            let (subst1, type1) = infer_term_type(value, env, fresh)?;
+
+            let env1 = subst1.apply_env(env);
+            let sigma = generalise(&env1, &type1);
+
+            let mut env2 = env1.clone();
+            env2.insert(name.clone(), sigma);
+
+            let (subst2, type2) = infer_term_type(in_term, &env2, fresh)?;
+
+            Ok((subst1.compose(subst2), type2))
+        }
     }
 }
 

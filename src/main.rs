@@ -6,14 +6,19 @@ use std::collections::HashMap;
 use term::{app, typed_eval_dbr, typed_lam, var};
 use types::Type;
 
-use crate::{term::lam, types::infer};
+use crate::{
+    term::{lam, let_in},
+    types::infer,
+};
 
 fn main() {
     //let id = lam("x", lam("y", lam("z", lam("w", var("w")))));
-    let id = lam(
-        "f",
-        lam("g", lam("x", app(var("f"), app(var("g"), var("x"))))),
-    );
+    //let id = lam(
+    //    "f",
+    //    lam("g", lam("x", app(var("f"), app(var("g"), var("x"))))),
+    //);
+
+    let id = let_in("id", lam("x", var("x")), app(var("id"), var("a")));
 
     match infer(&id) {
         Ok(ty) => println!("⊢ {} : {}", id, ty),

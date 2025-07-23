@@ -71,6 +71,14 @@ pub fn type_of(term: &Term, ctx: &mut TypeCtx) -> Result<Type, TypeError> {
                 other => Err(TypeError::ExpectedArrow(other)),
             }
         }
+        Term::Let {
+            name,
+            value,
+            in_term,
+        } => {
+            let t = app(lam(&name, *in_term.clone()), *value.clone());
+            type_of(&t, ctx)
+        }
     }
 }
 
@@ -89,6 +97,12 @@ pub enum Term {
         func: Box<Term>,
         arg: Box<Term>,
     },
+
+    Let {
+        name: String,
+        value: Box<Term>,
+        in_term: Box<Term>,
+    },
 }
 
 impl Display for Term {
@@ -96,7 +110,7 @@ impl Display for Term {
         match self {
             Term::Free(name) => write!(f, "{}", name),
             Term::Bound(index) => write!(f, "#{}", index),
-            Term::Lam { name, ty, body } => write!(f, "λ{}.{}", name, body),
+            Term::Lam { name, body, .. } => write!(f, "λ{}.{}", name, body),
             Term::App { func, arg } => {
                 match func.as_ref() {
                     Term::Lam { .. } => write!(f, "({})", func),
@@ -107,6 +121,11 @@ impl Display for Term {
                     _ => write!(f, " {}", arg),
                 }
             }
+            Term::Let {
+                name,
+                value,
+                in_term,
+            } => write!(f, "let {} = {} in {}", name, value, in_term),
         }
     }
 }
@@ -124,6 +143,14 @@ fn collect_free_vars(expr: &Term) -> HashSet<String> {
         Term::App { func, arg } => {
             free_vars.extend(collect_free_vars(func));
             free_vars.extend(collect_free_vars(arg));
+        }
+        Term::Let {
+            name,
+            value,
+            in_term,
+        } => {
+            let t = app(lam(&name, *in_term.clone()), *value.clone());
+            free_vars.extend(collect_free_vars(&t));
         }
     }
 
@@ -158,6 +185,14 @@ fn to_debruijn(expr: &Term, ctx: &mut Ctx) -> Term {
             func: Box::new(to_debruijn(func, ctx)),
             arg: Box::new(to_debruijn(arg, ctx)),
         },
+        Term::Let {
+            name,
+            value,
+            in_term,
+        } => {
+            let t = app(lam(&name, *in_term.clone()), *value.clone());
+            to_debruijn(&t, ctx)
+        }
     }
 }
 
@@ -209,6 +244,14 @@ pub fn from_debruijn(expr: &Term, ctx: &mut Ctx) -> Term {
             func: Box::new(from_debruijn(func, ctx)),
             arg: Box::new(from_debruijn(arg, ctx)),
         },
+        Term::Let {
+            name,
+            value,
+            in_term,
+        } => {
+            let t = app(lam(&name, *in_term.clone()), *value.clone());
+            from_debruijn(&t, ctx)
+        }
     }
 }
 
@@ -231,6 +274,14 @@ fn shift(expr: &Term, d: isize, cutoff: usize) -> Term {
             func: Box::new(shift(func, d, cutoff)),
             arg: Box::new(shift(arg, d, cutoff)),
         },
+        Term::Let {
+            name,
+            value,
+            in_term,
+        } => {
+            let t = app(lam(&name, *in_term.clone()), *value.clone());
+            shift(&t, d, cutoff)
+        }
     }
 }
 
@@ -249,11 +300,19 @@ pub fn var(name: &str) -> Term {
     Term::Free(name.to_string())
 }
 
+pub fn let_in(name: &str, value: Term, body: Term) -> Term {
+    Term::Let {
+        name: name.to_owned(),
+        value: Box::new(value),
+        in_term: Box::new(body),
+    }
+}
+
 // NOTE: default type is "Any" for testing purposes
 pub fn lam(param: &str, body: Term) -> Term {
     Term::Lam {
         name: param.to_string(),
-        ty: Type::Base("Any".to_string()), // Default type, can be changed later
+        ty: Type::Base("Any".into()), // Default type, can be changed later
         body: Box::new(body),
     }
 }
@@ -294,6 +353,14 @@ fn subst(root: &Term, var: usize, value: &Term) -> Term {
             func: Box::new(subst(func, var, value)),
             arg: Box::new(subst(arg, var, value)),
         },
+        Term::Let {
+            name,
+            value: v,
+            in_term,
+        } => {
+            let t = app(lam(&name, *in_term.clone()), *v.clone());
+            subst(&t, var, value)
+        }
     }
 }
 
