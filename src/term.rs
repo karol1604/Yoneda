@@ -96,7 +96,7 @@ impl Display for Term {
         match self {
             Term::Free(name) => write!(f, "{}", name),
             Term::Bound(index) => write!(f, "#{}", index),
-            Term::Lam { name, ty, body } => write!(f, "λ{}:{}.{}", name, ty, body),
+            Term::Lam { name, ty, body } => write!(f, "λ{}.{}", name, body),
             Term::App { func, arg } => {
                 match func.as_ref() {
                     Term::Lam { .. } => write!(f, "({})", func),
