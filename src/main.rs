@@ -8,7 +8,7 @@ use types::Type;
 
 use crate::{
     term::{lam, let_in},
-    types::infer,
+    types::{TypeEnv, TypeScheme, infer, infer_with_env},
 };
 
 fn main() {
@@ -18,9 +18,19 @@ fn main() {
     //    lam("g", lam("x", app(var("f"), app(var("g"), var("x"))))),
     //);
 
+    let mut prelude = TypeEnv::new();
+
+    // if you *know* a's type:
+    prelude.insert(
+        "a".into(),
+        TypeScheme {
+            forall: vec![],
+            body: Type::Base("Int".into()),
+        },
+    );
     let id = let_in("id", lam("x", var("x")), app(var("id"), var("a")));
 
-    match infer(&id) {
+    match infer_with_env(&id, &prelude) {
         Ok(ty) => println!("⊢ {} : {}", id, ty),
         Err(e) => println!("Error inferring type: {}", e),
     }

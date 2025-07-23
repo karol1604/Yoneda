@@ -55,9 +55,9 @@ impl Display for TypeVar {
 /// ∀ α . Type
 /// Represents a type scheme that can be instantiated with type variables.
 #[derive(Debug, Clone, PartialEq, Eq)]
-struct TypeScheme {
-    forall: Vec<TypeVar>,
-    body: Type,
+pub struct TypeScheme {
+    pub forall: Vec<TypeVar>,
+    pub body: Type,
 }
 
 impl TypeScheme {
@@ -70,7 +70,7 @@ impl TypeScheme {
     }
 }
 
-type TypeEnv = HashMap<String, TypeScheme>;
+pub type TypeEnv = HashMap<String, TypeScheme>;
 
 #[derive(Default, Clone)]
 struct TypeSubst(HashMap<TypeVar, Type>);
@@ -272,8 +272,18 @@ fn infer_term_type(
     }
 }
 
+/// Infers the type of a term in the Hindley-Milner type system.
+/// Used only on terms that have no free variables.
 pub fn infer(term: &Term) -> Result<Type, TypeError> {
     let mut fresh = Fresh::default();
     let (s, t) = infer_term_type(term, &TypeEnv::new(), &mut fresh)?;
+    Ok(s.apply(&t))
+}
+
+/// Infers the type of a term in the Hindley-Milner type system,
+/// taking into account a given type environment.
+pub fn infer_with_env(term: &Term, env: &TypeEnv) -> Result<Type, TypeError> {
+    let mut fresh = Fresh::default();
+    let (s, t) = infer_term_type(term, env, &mut fresh)?;
     Ok(s.apply(&t))
 }
