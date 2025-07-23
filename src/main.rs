@@ -22,13 +22,13 @@ fn main() {
 
     // if you *know* a's type:
     prelude.insert(
-        "a".into(),
+        "true".into(),
         TypeScheme {
             forall: vec![],
-            body: Type::Base("Int".into()),
+            body: Type::Base("Bool".into()),
         },
     );
-    let id = let_in("id", lam("x", var("x")), app(var("id"), var("a")));
+    let id = let_in("id", lam("x", var("x")), app(var("id"), var("true")));
 
     match infer_with_env(&id, &prelude) {
         Ok(ty) => println!("⊢ {} : {}", id, ty),
