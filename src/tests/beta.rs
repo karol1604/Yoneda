@@ -1,4 +1,4 @@
-use crate::term::{app, eval_dbr, lam, var};
+use crate::term::{app, lam, var, eval_dbr};
 use pretty_assertions::assert_eq;
 
 #[test]

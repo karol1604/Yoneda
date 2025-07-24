@@ -1,5 +1,7 @@
-mod parser;
+
 mod term;
+mod lexer;
+mod parser;
 mod types;
 
 use std::collections::HashMap;
