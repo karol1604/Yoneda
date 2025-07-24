@@ -5,7 +5,7 @@ mod parser;
 mod types;
 
 use std::collections::HashMap;
-use term::{app, typed_eval_dbr, typed_lam, var};
+use term::{app, typed_lam, var};
 use types::Type;
 
 use crate::{
@@ -14,7 +14,11 @@ use crate::{
 };
 
 fn main() {
-    //let id = lam("x", lam("y", lam("z", lam("w", var("w")))));
+    let id = lam("x", lam("y", lam("z", lam("w", app(var("w"), var("x"))))));
+    match infer(&id) {
+        Ok(ty) => println!("⊢ {} : {}", id, ty),
+        Err(e) => println!("Error inferring type: {}", e),
+    }
     //let id = lam(
     //    "f",
     //    lam("g", lam("x", app(var("f"), app(var("g"), var("x"))))),
@@ -30,7 +34,7 @@ fn main() {
             body: Type::Base("Bool".into()),
         },
     );
-    let id = let_in("id", lam("x", var("x")), app(var("id"), var("true")));
+    let id = let_in("id", lam("x", var("x")), var("id"));
 
     match infer_with_env(&id, &prelude) {
         Ok(ty) => println!("⊢ {} : {}", id, ty),
@@ -52,7 +56,7 @@ fn main() {
         var("z"),
     );
     println!("expr: {}", expr);
-    let _ = typed_eval_dbr(expr, &mut ctx);
+    //let _ = typed_eval_dbr(expr, &mut ctx);
     //println!("result: {}", result);
     //
     let test = "(λxasdasd.λy.x) yasdasd zz ";
