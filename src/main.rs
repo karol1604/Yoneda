@@ -1,7 +1,6 @@
-
-mod term;
 mod lexer;
 mod parser;
+mod term;
 mod types;
 
 use std::collections::HashMap;
@@ -15,6 +14,7 @@ use crate::{
 
 fn main() {
     let id = lam("x", lam("y", lam("z", lam("w", app(var("w"), var("x"))))));
+    let id = let_in("id", lam("x", var("x")), lam("z", app(var("id"), var("z"))));
     match infer(&id) {
         Ok(ty) => println!("⊢ {} : {}", id, ty),
         Err(e) => println!("Error inferring type: {}", e),
