@@ -56,8 +56,8 @@ fn main() {
     //println!("result: {}", result);
     //
     let test = "(λxasdasd.λy.x) yasdasd zz ";
+    let mut lexer = lexer::Lexer::new(test);
     /*
-    let mut lexer = parser::Lexer::new(test);
     println!(
         "tok: {}",
         lexer
@@ -67,7 +67,7 @@ fn main() {
             .collect::<Vec<_>>()
             .join(" ")
     );
-    */
+     */
 }
 
 #[cfg(test)]

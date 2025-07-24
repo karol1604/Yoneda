@@ -4,8 +4,11 @@ use std::fmt::{Display, Formatter};
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 
 pub enum Token{
-    Atom(char),
-    Op(char),
+    Lambda,
+    Dot,
+    LParen,
+    RParen,
+    Ident(char), //variable names like x, y, z
     Eof, //end of imput, special token
 }
 pub struct Lexer {
@@ -17,9 +20,12 @@ impl Lexer {
             .chars()
             .filter(|it| !it.is_ascii_whitespace())
             .map(|c| match c {
-                '0'..='9' |
-                'a'..='z' |'A'..='Z' => Token::Atom(c),
-                _ => Token::Op(c),
+                '\\'| 'λ' => Token::Lambda,
+                '.' => Token::Dot,
+                '(' => Token::LParen,
+                ')' => Token::RParen,
+                'a'..='z' |'A'..='Z' => Token::Ident(c),
+                _ => panic!("Unknwon character: {}",c),
             })
             .collect::<Vec<_>>();
         tokens.reverse();
@@ -34,11 +40,21 @@ impl Lexer {
 }
 
 #[derive(Debug, Clone)]
-pub enum S {
-    Atom(char),
-    Cons(char, Vec<S>),
+pub enum Expr {
+    Var(char),
+    Lam(char, Box<Expr>),
+    App(Box<Expr>, Box<Expr>),
 }
-
+impl Display for Expr {
+    fn fmt (&self, f: &mut Formatter<'_>) -> fmt::Result {
+        match self {
+            Expr::Var(x) => write!(f, "{}", x),
+            Expr::App(lhs, rhs) => write!(f, "({} {})", lhs, rhs),
+            Expr::Lam(param, body) => write!(f, "(λ{}.{})", param, body),
+        }
+    }
+}
+/*
 impl fmt::Display for S {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         match self {
@@ -53,3 +69,4 @@ impl fmt::Display for S {
         }
     }
 }
+*/

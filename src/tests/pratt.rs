@@ -1,17 +1,16 @@
 
-use crate::parser::{expr};
+use crate::parser::{parse_expr};
+use crate::lexer::{Expr, Lexer};
 use pretty_assertions::assert_eq;
 
 #[test]
 fn tests() {
-    let s = expr("1");
-    assert_eq!(s.to_string(), "1");
+    let mut lexer = Lexer::new("λx.x");
+    let expr = parse_expr(&mut lexer);
+    assert_eq!(expr.to_string(),"(λx.x)");
 
-    let s = expr("1 + 2 * 3");
-    println!("Parsed expression: {}", s.to_string());
-    assert_eq!(s.to_string(), "(+ 1 (* 2 3))");
-
-    let s = expr("a + b * c * d + e");
-    println!("Parsed expression: {}", s.to_string());
-    assert_eq!(s.to_string(), "(+ (+ a (* (* b c) d)) e)");
+    let mut lexer = Lexer::new("((λx.(x x)) (λx.(x x)))");
+    let expr = parse_expr(&mut lexer);
+    assert_eq!(expr.to_string(),"((λx.(x x)) (λx.(x x)))");
+    println!("{}", expr);
 }
