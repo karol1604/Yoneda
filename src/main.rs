@@ -2,11 +2,41 @@
 mod term;
 mod lexer;
 mod parser;
+mod types;
 
 use std::collections::HashMap;
-use term::{Type, app, typed_eval_dbr, typed_lam, var};
+use term::{app, typed_eval_dbr, typed_lam, var};
+use types::Type;
+
+use crate::{
+    term::{lam, let_in},
+    types::{TypeEnv, TypeScheme, infer, infer_with_env},
+};
 
 fn main() {
+    //let id = lam("x", lam("y", lam("z", lam("w", var("w")))));
+    //let id = lam(
+    //    "f",
+    //    lam("g", lam("x", app(var("f"), app(var("g"), var("x"))))),
+    //);
+
+    let mut prelude = TypeEnv::new();
+
+    // if you *know* a's type:
+    prelude.insert(
+        "true".into(),
+        TypeScheme {
+            forall: vec![],
+            body: Type::Base("Bool".into()),
+        },
+    );
+    let id = let_in("id", lam("x", var("x")), app(var("id"), var("true")));
+
+    match infer_with_env(&id, &prelude) {
+        Ok(ty) => println!("⊢ {} : {}", id, ty),
+        Err(e) => println!("Error inferring type: {}", e),
+    }
+
     let mut ctx: HashMap<String, Type> = HashMap::new();
     ctx.insert("y".into(), Type::Base("α".into()));
     ctx.insert("z".into(), Type::Base("α".into()));
@@ -25,17 +55,17 @@ fn main() {
     let _ = typed_eval_dbr(expr, &mut ctx);
     //println!("result: {}", result);
     //
-    //let test = "(λxasdasd.λy.x) yasdasd zz ";
-    //let mut lexer = parser::Lexer::new(test);
-    //println!(
-    //    "tok: {}",
-    //    lexer
-    //        .tokenize()
-    //        .iter()
-    //        .map(|t| t.token_kind.clone().to_string())
-    //        .collect::<Vec<_>>()
-    //        .join(" ")
-    //);
+    let test = "(λxasdasd.λy.x) yasdasd zz ";
+    let mut lexer = parser::Lexer::new(test);
+    println!(
+        "tok: {}",
+        lexer
+            .tokenize()
+            .iter()
+            .map(|t| t.token_kind.clone().to_string())
+            .collect::<Vec<_>>()
+            .join(" ")
+    );
 }
 
 #[cfg(test)]
