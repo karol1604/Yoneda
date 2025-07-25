@@ -1,3 +1,4 @@
+use std::{fmt::Display};
 use crate::{
     lexer::{Lexer, Token},
     term::Term,
