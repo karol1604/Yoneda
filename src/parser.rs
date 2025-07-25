@@ -1,8 +1,7 @@
 use crate::{
-    lexer::{Expr, Lexer, Token},
+    lexer::{Lexer, Token},
     term::Term,
 };
-use std::{fmt::Display, iter::Peekable, str::CharIndices};
 
 /*
 pub fn expr(input: &str) -> S {

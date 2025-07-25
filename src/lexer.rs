@@ -1,6 +1,3 @@
-use std::fmt;
-use std::fmt::{Display, Formatter};
-
 #[derive(Debug, Clone, PartialEq, Eq)]
 
 pub enum Token {
@@ -72,45 +69,3 @@ impl Lexer {
         self.tokens.last().unwrap_or_else(|| &Token::Eof).clone()
     }
 }
-
-#[derive(Debug, Clone)]
-pub enum Expr {
-    Var(String),
-    Lam(String, Box<Expr>),
-    App(Box<Expr>, Box<Expr>),
-}
-impl Display for Expr {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        match self {
-            Expr::Var(x) => write!(f, "{}", x),
-            Expr::App(func, arg) => {
-                match func.as_ref() {
-                    Expr::Lam { .. } => write!(f, "({})", func),
-                    _ => write!(f, "{}", func),
-                }?;
-                match arg.as_ref() {
-                    Expr::Lam { .. } => write!(f, " ({})", arg),
-                    _ => write!(f, " {}", arg),
-                }
-            }
-            Expr::Lam(param, body) => write!(f, "λ{}.{}", param, body),
-        }
-    }
-}
-/*
-impl fmt::Display for S {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        match self {
-            S::Atom(i) => write!(f, "{}", i),
-            S::Cons(head, rest) => {
-                write!(f, "({}", head)?;
-                for s in rest {
-                    write!(f, " {}", s)?;
-                }
-                write!(f, ")")
-            }
-        }
-    }
-}
-*/
-
