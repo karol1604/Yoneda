@@ -219,8 +219,8 @@ fn infer_term_type(
                 scheme.instantiate(fresh),
             ))
         }
-        Term::Lam { name, body, .. } => {
-            let tv = Type::Var(fresh.fresh());
+        Term::Lam { name, body, ty } => {
+            let tv = ty.clone().unwrap_or(Type::Var(fresh.fresh()));
             let mut new_env = env.clone();
             new_env.insert(
                 name.clone(),
