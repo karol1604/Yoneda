@@ -1,6 +1,6 @@
 #[derive(Debug, Clone, PartialEq, Eq)]
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+use std::fmt::{Display, Formatter};
 
 pub enum Token {
     Lambda,
