@@ -1,7 +1,9 @@
 
 use std::{fmt::Display, iter::Peekable, str::CharIndices};
-use crate::lexer::{Lexer, Token, S};
+use crate::lexer::{Expr, Lexer, Token};
 
+
+/*
 pub fn expr(input: &str) -> S {
     let mut lexer = Lexer::new(input);
     expr_bp(&mut lexer, 0)
@@ -9,7 +11,8 @@ pub fn expr(input: &str) -> S {
 
 pub fn expr_bp(lexer: &mut Lexer, min_bp: u8) -> S {
     let mut lhs = match lexer.next() {
-        Token::Atom(it) => S::Atom(it),
+        Token::Atom(it) =>
+            S::Atom(it),
         t => panic!("bad token: {:?}", t),
     };
     
@@ -39,5 +42,42 @@ pub fn infix_binding_power(op: char) -> (u8, u8) {
         '+' | '-' => (1, 2),
         '*' | '/' => (3, 4),
         _ => panic!("bad op: {:?}", op),
+    }
+}
+ */
+pub fn parse_expr(lexer: &mut Lexer) -> Expr {
+    parse_app(lexer)
+}
+fn parse_app(lexer: &mut Lexer) -> Expr {
+    let mut expr = parse_atom(lexer);
+    while let Token::Ident(_) | Token::LParen | Token::Lambda = lexer.peek() {
+        let rhs = parse_atom(lexer);
+        expr = Expr::App(Box::new(expr), Box::new(rhs));
+    }
+    expr
+}
+fn parse_atom(lexer: &mut Lexer) -> Expr {
+    match lexer.next() {
+        Token::Ident(c) => Expr::Var(c),
+        Token::LParen => {
+            let expr = parse_expr(lexer);
+            match lexer.next() {
+                Token::RParen => expr,
+                _ => panic!("expected `)`"),
+            }
+        }
+        Token::Lambda => {
+            if let Token::Ident(param) = lexer.next() {
+                if let Token::Dot = lexer.next() {
+                    let body = parse_expr(lexer);
+                    Expr::Lam(param, Box::new(body))
+                } else {
+                    panic!("expected `.` after parameter");
+                }
+            } else {
+                panic!("expected parameter after lambda");
+            }
+        }
+        t => panic!("unexpected token: {:?}", t),
     }
 }
