@@ -1,56 +1,99 @@
 use std::fmt;
 use std::fmt::{Display, Formatter};
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 
-pub enum Token{
+pub enum Token {
     Lambda,
     Dot,
     LParen,
     RParen,
-    Ident(char), //variable names like x, y, z
-    Eof, //end of imput, special token
+    Ident(String), //variable names like x, y, z
+    Eof,           //end of imput, special token
 }
+
 pub struct Lexer {
     tokens: Vec<Token>,
 }
+
 impl Lexer {
     pub fn new(input: &str) -> Lexer {
-        let mut tokens = input
-            .chars()
-            .filter(|it| !it.is_ascii_whitespace())
-            .map(|c| match c {
-                '\\'| 'λ' => Token::Lambda,
-                '.' => Token::Dot,
-                '(' => Token::LParen,
-                ')' => Token::RParen,
-                'a'..='z' |'A'..='Z' => Token::Ident(c),
-                _ => panic!("Unknwon character: {}",c),
-            })
-            .collect::<Vec<_>>();
+        let mut chars = input.chars().peekable();
+        let mut tokens = Vec::new();
+
+        while let Some(&c) = chars.peek() {
+            if c.is_ascii_whitespace() {
+                chars.next();
+                continue;
+            }
+
+            tokens.push(match c {
+                '\\' | 'λ' => {
+                    chars.next();
+                    Token::Lambda
+                }
+                '.' => {
+                    chars.next();
+                    Token::Dot
+                }
+                '(' => {
+                    chars.next();
+                    Token::LParen
+                }
+                ')' => {
+                    chars.next();
+                    Token::RParen
+                }
+                'a'..='z' | 'A'..='Z' => {
+                    let mut ident = String::new();
+                    while let Some(&ch) = chars.peek() {
+                        if ch.is_ascii_alphanumeric() || ch == '_' {
+                            ident.push(ch);
+                            chars.next();
+                        } else {
+                            break;
+                        }
+                    }
+                    Token::Ident(ident)
+                }
+                _ => panic!("unknown character: {}", c),
+            });
+        }
+
         tokens.reverse();
         Lexer { tokens }
     }
+
     pub fn next(&mut self) -> Token {
         self.tokens.pop().unwrap_or(Token::Eof)
     }
+
     pub fn peek(&mut self) -> Token {
-        self.tokens.last().copied().unwrap_or(Token::Eof)
+        self.tokens.last().unwrap_or_else(|| &Token::Eof).clone()
     }
 }
 
 #[derive(Debug, Clone)]
 pub enum Expr {
-    Var(char),
-    Lam(char, Box<Expr>),
+    Var(String),
+    Lam(String, Box<Expr>),
     App(Box<Expr>, Box<Expr>),
 }
 impl Display for Expr {
-    fn fmt (&self, f: &mut Formatter<'_>) -> fmt::Result {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         match self {
             Expr::Var(x) => write!(f, "{}", x),
-            Expr::App(lhs, rhs) => write!(f, "({} {})", lhs, rhs),
-            Expr::Lam(param, body) => write!(f, "(λ{}.{})", param, body),
+            Expr::App(func, arg) => {
+                match func.as_ref() {
+                    Expr::Lam { .. } => write!(f, "({})", func),
+                    _ => write!(f, "{}", func),
+                }?;
+                match arg.as_ref() {
+                    Expr::Lam { .. } => write!(f, " ({})", arg),
+                    _ => write!(f, " {}", arg),
+                }
+            }
+            Expr::Lam(param, body) => write!(f, "λ{}.{}", param, body),
         }
     }
 }
@@ -70,3 +113,4 @@ impl fmt::Display for S {
     }
 }
 */
+

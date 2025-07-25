@@ -1,7 +1,5 @@
-
-use std::{fmt::Display, iter::Peekable, str::CharIndices};
 use crate::lexer::{Expr, Lexer, Token};
-
+use std::{fmt::Display, iter::Peekable, str::CharIndices};
 
 /*
 pub fn expr(input: &str) -> S {
@@ -15,7 +13,7 @@ pub fn expr_bp(lexer: &mut Lexer, min_bp: u8) -> S {
             S::Atom(it),
         t => panic!("bad token: {:?}", t),
     };
-    
+
     loop {
         let op = match lexer.peek() {
             Token::Eof => break,
@@ -81,3 +79,4 @@ fn parse_atom(lexer: &mut Lexer) -> Expr {
         t => panic!("unexpected token: {:?}", t),
     }
 }
+
