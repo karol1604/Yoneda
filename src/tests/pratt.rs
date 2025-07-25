@@ -15,7 +15,7 @@ fn tests() {
     assert_eq!(expr.to_string(), "(λx.x x) (λx.x x)");
     println!("{}", expr);
 }
-/*
+
 
 #[test]
 fn multi_character(){
