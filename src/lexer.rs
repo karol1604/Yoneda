@@ -9,7 +9,7 @@ pub enum Token {
     LParen,
     RParen,
     Ident(String), //variable names like x, y, z
-    Eof, //end of imput, special token
+    Eof,           //end of imput, special token
 }
 
 pub struct Lexer {
@@ -48,15 +48,19 @@ impl Lexer {
                         if c.is_alphanumeric() {
                             ident.push(c);
                             chars.next();
-                        } else{ break; }
+                        } else {
+                            break;
+                        }
                     }
                     tokens.push(Token::Ident(ident));
                 }
-                _ => { panic!("unexpected character: {}", c); }
+                _ => {
+                    panic!("unexpected character: {}", c);
+                }
             }
         }
         tokens.reverse();
-        Lexer{tokens}
+        Lexer { tokens }
     }
 
     pub fn next(&mut self) -> Token {
@@ -74,7 +78,7 @@ pub enum Expr {
     App(Box<Expr>, Box<Expr>),
 }
 impl Display for Expr {
-    fn fmt (&self, f: &mut Formatter<'_>) -> fmt::Result {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         match self {
             Expr::Var(x) => write!(f, "{}", x),
             Expr::App(lhs, rhs) => write!(f, "({} {})", lhs, rhs),

@@ -12,7 +12,7 @@ use types::Type;
 
 use crate::{
     parser::parse_expr,
-    term::{lam, let_in},
+    term::{eval_dbr, lam, let_in},
     types::{TypeEnv, TypeScheme, infer, infer_with_env},
 };
 
@@ -73,10 +73,18 @@ fn main() {
 
     let test = "(λxasdadsdh.λy.x) y z";
     let mut lexer = lexer::Lexer::new(test);
-    let expr = parse_expr(&mut lexer);
-    println!("expr_p: {}", expr);
+    match parse_expr(&mut lexer) {
+        Ok(term) => println!("Parsed term: {}", term),
+        Err(e) => {
+            eprintln!("Parse error: {}", e);
+            return;
+        }
+    };
 
+    let mut prelude = TypeEnv::new();
     loop {
+        let mut to_parse = true;
+
         print!("λ> ");
         io::stdout().flush().unwrap();
 
@@ -86,16 +94,65 @@ fn main() {
             continue;
         }
 
-        if input.trim() == ":q" {
-            break;
-        }
         let input = input.trim();
 
-        let mut lexer = lexer::Lexer::new(input);
-        let term = parse_expr(&mut lexer);
-        match infer(&term) {
-            Ok(ty) => println!("⊢ {} : {}", term, ty),
-            Err(e) => println!("Error inferring type: {}", e),
+        if input == ":q" {
+            break;
+        }
+
+        if input.starts_with(":def") {
+            to_parse = false;
+            let parts = input.split(' ').collect::<Vec<_>>();
+
+            if parts[1] == "arrow" {
+                if parts.len() != 5 {
+                    eprintln!("Usage: :def arrow <name> <type1> <type2>");
+                    continue;
+                }
+                println!("Defined `{}` as `{} -> {}`.", parts[2], parts[3], parts[4]);
+                prelude.insert(
+                    parts[2].to_string(),
+                    TypeScheme {
+                        forall: vec![],
+                        body: Type::Arrow(
+                            Box::new(Type::Base(parts[3].to_string())),
+                            Box::new(Type::Base(parts[4].to_string())),
+                        ),
+                    },
+                );
+            } else {
+                if parts.len() != 3 {
+                    eprintln!("Usage: :def <name> <type>");
+                    continue;
+                }
+                println!("Defined `{}` as `{}`.", parts[1], parts[2]);
+                prelude.insert(
+                    parts[1].to_string(),
+                    TypeScheme {
+                        forall: vec![],
+                        body: Type::Base(parts[2].to_string()),
+                    },
+                );
+            }
+        }
+
+        if to_parse {
+            let mut lexer = lexer::Lexer::new(input);
+            let term = match parse_expr(&mut lexer) {
+                Ok(term) => term,
+                Err(e) => {
+                    eprintln!("Parse error: {}", e);
+                    continue;
+                }
+            };
+
+            match infer_with_env(&term, &prelude) {
+                Ok(ty) => {
+                    let reduced = eval_dbr(term.clone());
+                    println!("⊢ {} : {}", reduced, ty);
+                }
+                Err(e) => println!("Error inferring type: {}", e),
+            }
         }
     }
 
