@@ -59,7 +59,7 @@ fn parse_app(lexer: &mut Lexer) -> Expr {
 fn parse_atom(lexer: &mut Lexer) -> Expr {
     match lexer.next() {
         Token::Ident(c) => Expr::Var(c),
-        Token::LParen => {
+        Token::LParen => { 
             let expr = parse_expr(lexer);
             match lexer.next() {
                 Token::RParen => expr,
