@@ -1,9 +1,8 @@
-use std::fmt;
-use std::fmt::{Display, Formatter};
+#[derive(Debug, Clone, PartialEq, Eq)]
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 
-pub enum Token{
+pub enum Token {
     Lambda,
     Dot,
     LParen,
@@ -11,9 +10,11 @@ pub enum Token{
     Ident(String), //variable names like x, y, z
     Eof, //end of imput, special token
 }
+
 pub struct Lexer {
     tokens: Vec<Token>,
 }
+
 impl Lexer {
     pub fn new(input: &str) -> Lexer {
         let mut chars = input.chars().peekable();
@@ -56,6 +57,7 @@ impl Lexer {
         tokens.reverse();
         Lexer{tokens}
     }
+
     pub fn next(&mut self) -> Token {
         self.tokens.pop().unwrap_or(Token::Eof)
     }
@@ -92,6 +94,6 @@ impl fmt::Display for S {
                 write!(f, ")")
             }
         }
+
     }
 }
-*/

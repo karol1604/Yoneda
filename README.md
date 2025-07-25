@@ -3,4 +3,6 @@ this is a simple proof assistant
 
 ## todo
 - [ ] add lazy evaluation
-- [ ] add an inference engine (NEEDED!)
+- [ ] research AST
+- [ ] make the lexer/parser more robust
+- [ ] add algebraic data types

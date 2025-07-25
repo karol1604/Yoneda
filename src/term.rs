@@ -39,6 +39,10 @@ pub fn type_of(term: &Term, ctx: &mut TypeCtx) -> Result<Type, TypeError> {
         }
         Term::Lam { name, ty, body } => {
             //println!("PROCESSING LAM: {} : {}", name, ty);
+            let ty = match ty {
+                Some(ty) => ty.clone(),
+                None => Type::Base("Any".to_string()), // Default type for testing
+            };
             let mut child = ctx.clone();
             child.insert(name.clone(), ty.clone());
             let body_ty = type_of(&body, &mut child)?;
@@ -89,7 +93,7 @@ pub enum Term {
 
     Lam {
         name: String, // Name of the parameter
-        ty: Type,
+        ty: Option<Type>,
         body: Box<Term>,
     },
 
@@ -110,7 +114,13 @@ impl Display for Term {
         match self {
             Term::Free(name) => write!(f, "{}", name),
             Term::Bound(index) => write!(f, "#{}", index),
-            Term::Lam { name, body, .. } => write!(f, "λ{}.{}", name, body),
+            Term::Lam { name, body, ty } => {
+                if let Some(ty) = ty {
+                    write!(f, "λ{}:{}.{}", name, ty, body)
+                } else {
+                    write!(f, "λ{}.{}", name, body)
+                }
+            }
             Term::App { func, arg } => {
                 match func.as_ref() {
                     Term::Lam { .. } => write!(f, "({})", func),
@@ -312,15 +322,15 @@ pub fn let_in(name: &str, value: Term, body: Term) -> Term {
 pub fn lam(param: &str, body: Term) -> Term {
     Term::Lam {
         name: param.to_string(),
-        ty: Type::Base("Any".into()), // Default type, can be changed later
         body: Box::new(body),
+        ty: None,
     }
 }
 
 pub fn typed_lam(param: &str, body: Term, ty: Type) -> Term {
     Term::Lam {
         name: param.to_string(),
-        ty,
+        ty: Some(ty),
         body: Box::new(body),
     }
 }
