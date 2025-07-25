@@ -28,6 +28,6 @@ fn multi_character(){
     // AST and parser test:
     let mut lexer = Lexer::new(input);
     let ast = parse_expr(&mut lexer);
-    assert_eq!(format!("{}", ast), "(λxyz.xyz)");
+    assert_eq!(format!("{}", ast), "λxyz.xyz");
 }
         
