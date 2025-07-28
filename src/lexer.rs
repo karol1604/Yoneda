@@ -1,6 +1,3 @@
-use std::fmt;
-use std::fmt::{Display, Formatter};
-
 #[derive(Debug, Clone, PartialEq, Eq)]
 
 pub enum Token {
@@ -71,21 +68,6 @@ impl Lexer {
     }
 }
 
-#[derive(Debug, Clone)]
-pub enum Expr {
-    Var(String),
-    Lam(String, Box<Expr>),
-    App(Box<Expr>, Box<Expr>),
-}
-impl Display for Expr {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        match self {
-            Expr::Var(x) => write!(f, "{}", x),
-            Expr::App(lhs, rhs) => write!(f, "({} {})", lhs, rhs),
-            Expr::Lam(param, body) => write!(f, "(λ{}.{})", param, body),
-        }
-    }
-}
 /*
 impl fmt::Display for S {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {

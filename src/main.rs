@@ -17,8 +17,6 @@ use crate::{
 };
 
 fn main() {
-    let id = lam("x", lam("y", lam("z", lam("w", app(var("w"), var("x"))))));
-    let id = let_in("id", lam("x", var("x")), lam("z", app(var("id"), var("z"))));
     let id = typed_lam(
         "x",
         var("x"),
