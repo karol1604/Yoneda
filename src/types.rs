@@ -60,6 +60,25 @@ pub struct TypeScheme {
     pub body: Type,
 }
 
+impl Display for TypeScheme {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        if self.forall.is_empty() {
+            write!(f, "{}", self.body)
+        } else {
+            write!(
+                f,
+                "∀ {} . {}",
+                self.forall
+                    .iter()
+                    .map(ToString::to_string)
+                    .collect::<Vec<_>>()
+                    .join(", "),
+                self.body
+            )
+        }
+    }
+}
+
 impl TypeScheme {
     fn instantiate(&self, fresh: &mut Fresh) -> Type {
         let mut subst = TypeSubst::default();

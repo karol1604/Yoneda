@@ -100,6 +100,14 @@ fn main() {
             break;
         }
 
+        if input == ":env" {
+            println!("Current environment:");
+            for (name, scheme) in &prelude {
+                println!("{} : {}", name, scheme);
+            }
+            continue;
+        }
+
         if input.starts_with(":def") {
             to_parse = false;
             let parts = input.split(' ').collect::<Vec<_>>();
