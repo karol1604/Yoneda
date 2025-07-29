@@ -1,10 +1,12 @@
 mod lexer;
 mod parser;
+mod repl;
 mod term;
 mod types;
 
 use std::{
     collections::HashMap,
+    error::Error,
     io::{self, Write},
 };
 use term::{app, typed_lam, var};
@@ -12,6 +14,7 @@ use types::Type;
 
 use crate::{
     parser::parse_expr,
+    repl::{Command, Repl},
     term::{eval_dbr, lam, let_in},
     types::{TypeEnv, TypeScheme, infer, infer_with_env},
 };
@@ -79,88 +82,11 @@ fn main() {
         }
     };
 
-    let mut prelude = TypeEnv::new();
-    loop {
-        let mut to_parse = true;
-
-        print!("λ> ");
-        io::stdout().flush().unwrap();
-
-        let mut input = String::new();
-        if io::stdin().read_line(&mut input).is_err() {
-            eprintln!("read error");
-            continue;
-        }
-
-        let input = input.trim();
-
-        if input == ":q" {
-            break;
-        }
-
-        if input == ":env" {
-            println!("Current environment:");
-            for (name, scheme) in &prelude {
-                println!("{} : {}", name, scheme);
-            }
-            continue;
-        }
-
-        if input.starts_with(":def") {
-            to_parse = false;
-            let parts = input.split(' ').collect::<Vec<_>>();
-
-            if parts[1] == "arrow" {
-                if parts.len() != 5 {
-                    eprintln!("Usage: :def arrow <name> <type1> <type2>");
-                    continue;
-                }
-                println!("Defined `{}` as `{} -> {}`.", parts[2], parts[3], parts[4]);
-                prelude.insert(
-                    parts[2].to_string(),
-                    TypeScheme {
-                        forall: vec![],
-                        body: Type::Arrow(
-                            Box::new(Type::Base(parts[3].to_string())),
-                            Box::new(Type::Base(parts[4].to_string())),
-                        ),
-                    },
-                );
-            } else {
-                if parts.len() != 3 {
-                    eprintln!("Usage: :def <name> <type>");
-                    continue;
-                }
-                println!("Defined `{}` as `{}`.", parts[1], parts[2]);
-                prelude.insert(
-                    parts[1].to_string(),
-                    TypeScheme {
-                        forall: vec![],
-                        body: Type::Base(parts[2].to_string()),
-                    },
-                );
-            }
-        }
-
-        if to_parse {
-            let mut lexer = lexer::Lexer::new(input);
-            let term = match parse_expr(&mut lexer) {
-                Ok(term) => term,
-                Err(e) => {
-                    eprintln!("Parse error: {}", e);
-                    continue;
-                }
-            };
-
-            match infer_with_env(&term, &prelude) {
-                Ok(ty) => {
-                    let reduced = eval_dbr(term.clone());
-                    println!("⊢ {} : {}", reduced, ty);
-                }
-                Err(e) => println!("Error inferring type: {}", e),
-            }
-        }
-    }
+    let prelude = TypeEnv::new();
+    let mut repl = repl::Repl::new(prelude);
+    repl.add_command(Box::new(repl::commands::DefCommand));
+    repl.add_command(Box::new(repl::commands::ShowEnvCommand));
+    repl.run();
 
     /*
     println!(
